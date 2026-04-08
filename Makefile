@@ -7,7 +7,7 @@ TARGET_AI = motor_ai
 DIST = dist
 LIBDIR = lib
 
-Motor control driven by AI vision feedback via named pipe
+#Motor control driven by AI vision feedback via named pipe
 SRCS_AI = main_ai_integrated.c \
           MotorDriver.c \
           $(LIBDIR)/DEV_Config.c \
