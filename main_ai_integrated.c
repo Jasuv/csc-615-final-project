@@ -37,6 +37,11 @@
 #define CAUTION_SPEED 35
 #define CLEAR_SPEED 100
 #define PYTHON_SCRIPT "ai_camera.py"
+#define ECHO_PIN 0                              // Set this up later
+#define TRIG_PIN 0                              // Set this up later
+#define LEFT_LINE_SENSOR_PIN                    // Set this up later
+#define MIDDLE_LINE_SENSOR_PIN                  // Set this up later
+#define RIGHT_LINE_SENSOR_PIN                   // Set this up later
 
 /* Global variables for thread communication */
 volatile char current_status[32] = "INIT";
@@ -155,6 +160,22 @@ void* vision_reader_thread(void* arg) {
     return NULL;
 }
 
+void *ultrasonic_sensor_thread(void *arg)
+{
+    while(!kill_signal_recieved)
+    {
+        int value = gpioRead(IR_PIN);
+
+        pthread_mutex_lock(&lock);
+        obstacle_state = value;
+        pthread_mutex_unlock(&lock);
+
+        usleep(20000);
+    }
+
+    return(NULL);
+}
+
 /*
  * Determine motor speed based on vision status
  */
@@ -177,6 +198,16 @@ int main(void) {
     printf("  Dual Motor (A & B) Configuration\n");
     printf("  Running on Raspberry Pi 4\n");
     printf("========================================\n\n");
+
+	/* Initialize ultrasonic sensor GPIO pins*/
+	printf("Setting GPIO pins to output\n");
+	gpioSetMode(ECHO_PIN, PI_INPUT);
+	gpioSetMode(TRIG_PIN, PI_OUTPUT);
+	printf("Finished setting GPIO pins\n");
+
+    /* Configure line sensor input pins */
+    gpioSetMode(LINE_PIN, PI_INPUT);
+    gpioSetPullUpDown(LINE_PIN, PI_PUD_UP);                     // wtf is this
 
 
     /* Launch Python camera script as background process */
@@ -224,6 +255,12 @@ int main(void) {
         if (python_pid > 0) kill(python_pid, SIGTERM);
         return 1;
     }
+
+    /* Start ultrasonic sensor thread */
+
+
+    /* Start line sensor threads */
+
 
     /* Give Python script time to initialize and create the FIFO */
     printf("[Main] Waiting for Python script to initialize...\n");
