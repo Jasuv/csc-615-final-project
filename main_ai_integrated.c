@@ -37,11 +37,11 @@
 #define CAUTION_SPEED 35
 #define CLEAR_SPEED 100
 #define PYTHON_SCRIPT "ai_camera.py"
-#define ECHO_PIN 0                              // Set this up later
-#define TRIG_PIN 0                              // Set this up later
-#define LEFT_LINE_SENSOR_PIN                    // Set this up later
-#define MIDDLE_LINE_SENSOR_PIN                  // Set this up later
-#define RIGHT_LINE_SENSOR_PIN                   // Set this up later
+#define ECHO_PIN 23
+#define TRIG_PIN 24
+#define LEFT_LINE_SENSOR_PIN 22
+#define MIDDLE_LINE_SENSOR_PIN 27
+#define RIGHT_LINE_SENSOR_PIN 17
 
 /* Global variables for thread communication */
 volatile char current_status[32] = "INIT";
