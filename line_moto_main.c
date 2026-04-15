@@ -21,25 +21,29 @@ int main(void)
     motor_init();
 
     // Configure line sensor input
-    gpioSetMode(LINE_PIN, PI_INPUT);
-    gpioSetPullUpDown(LINE_PIN, PI_PUD_UP);
+    // gpioSetMode(LINE_PIN, PI_INPUT);
+    // gpioSetPullUpDown(LINE_PIN, PI_PUD_UP);
 
     printf("Line sensor motor test started...\n");
 
     while (1)
     {
-        int state = gpioRead(LINE_PIN);
+        //int state = gpioRead(LINE_PIN);
+        int state=1;
 
 
     if (state == 0)
     {
         printf("On line → Motor running\n");
-        motor_run(MOTOR_B,80,FORWARD);
+        motor_run(MOTOR_B,100,FORWARD);
+        motor_run(MOTOR_A,100,FORWARD);
+
     }
     else
     {
         printf("Off line → Motor stopped\n");
         motor_stop(MOTOR_B);
+        motor_stop(MOTOR_A);
     }
 
         gpioDelay(200000); // 200ms delay
