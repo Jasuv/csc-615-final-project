@@ -19,9 +19,12 @@
 #include "DEV_Config.h"
 #include "PCA9685.h"
 
-#define PCA9685_ADDR 0x51
+#define HAT1_ADDR 0x40   // First motor hat
+#define HAT2_ADDR 0x51   // Second motor hat
+
 #define PWM_FREQ 100
 
+/* PCA9685 channel mapping */
 #define PWMA 0
 #define AIN1 1
 #define AIN2 2
@@ -29,35 +32,32 @@
 #define BIN2 4
 #define PWMB 5
 
-/*
-#define PWMA PCA_CHANNEL_0
-#define AIN1 PCA_CHANNEL_1
-#define AIN2 PCA_CHANNEL_2
-#define PWMB PCA_CHANNEL_3
-#define BIN1 PCA_CHANNEL_4
-#define BIN2 PCA_CHANNEL_5
-*/
-
 typedef enum {
-	MOTOR_A = 0,
-	MOTOR_B = 1
+    MOTOR_FL,
+    MOTOR_FR,
+    MOTOR_RL,
+    MOTOR_RR
 } Motor;
 
 typedef enum {
-	FORWARD = 0,
-	BACKWARD = 1
+    FORWARD = 1,
+    BACKWARD = 0
 } Direction;
 
-// initializes PCA9685 chip with I2C addr and PWM frequency 
+/* initialize BOTH hats */
 void motor_init(void);
 
-// run the specified motor forwards/backwards at "speed"
+/* run motor */
 int motor_run(Motor mot, UWORD speed, Direction dir);
 
-// stop specified motor
+void motor_ramp(UBYTE motor,
+                UWORD startSpeed, UWORD endSpeed,
+                UWORD stepDelay, Direction dir);
+
+/* stop motor */
 int motor_stop(Motor mot);
 
-// stop all motors
-int motor_stop_all();
+/* stop all motors */
+int motor_stop_all(void);
 
 #endif

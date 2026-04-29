@@ -335,7 +335,7 @@ UBYTE DEV_ModuleInit(void)
     printf("USE_DEV_LIB \r\n");
 #endif
     GPIO_Config();
-    DEV_I2C_Init(0x51);
+   
     
     return 0;
 }

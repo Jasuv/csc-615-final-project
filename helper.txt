@@ -110,11 +110,8 @@ LIST OF CLASSES TO NUMBER
 
         "react_classes":   [0,1,2,3,4,5,6,7,8,9,10,11,12]
 
-        # Unzip to get the packerOut.zip inside
-        unzip imx_export.zip -d ~/imx_export
-
         # Run the packager pointing to the packerOut.zip
-        imx500-package -i ~/imx_export/packerOut.zip -o ~/best_model
+        imx500-package -i ~/packerOut.zip -o ~/best_model
 
         # Copy the rpk to the models directory
         sudo cp ~/best_model/*.rpk /usr/share/imx500-models/

@@ -2,8 +2,8 @@
     "imx500_object_detection":
     {
         "max_detections" : 10,
-        "threshold" : 0.3,
-        "network_file": "/usr/share/imx500-models/imx500_network_yolo11n_pp.rpk",
+        "threshold" : 0.01,
+        "network_file": "/usr/share/imx500-models/network.rpk",
         "bbox_normalization": true,
         "input_size": 640.0,
         "temporal_filter":
@@ -15,16 +15,7 @@
         },
         "classes":
         [
-            "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
-            "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
-            "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack",
-            "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball",
-            "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket",
-            "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
-            "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake",
-            "chair", "couch", "potted plant", "bed", "dining table", "toilet", "tv", "laptop",
-            "mouse", "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink",
-            "refrigerator", "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
+            "line"
         ]
     },
     "fifo":
@@ -33,7 +24,7 @@
         "slow_threshold":  0.50,
         "buffer_size":     5,
         "fifo_path":       "/tmp/ai_camera_status",
-        "react_classes":   [0, 56, 57, 62, 63, 65, 66, 67]
+        "react_classes":   [0]
     },
     "object_detect_draw_cv":
     {

@@ -20,102 +20,140 @@
 
 #include "MotorDriver.h"
 
-/*
-* initializes PCA9685 chip with custom address (cuz mines different from default)
-* and the PWM frequency
-*/
-void motor_init(void) {
-	PCA9685_Init(PCA9685_ADDR);
-	PCA9685_SetPWMFreq(PWM_FREQ);
+/* Initialize both motor hats */
+void motor_init(void)
+{
+    /* Initialize Hat 1 */
+    DEV_I2C_Init(HAT1_ADDR);
+    PCA9685_Init(HAT1_ADDR);
+    PCA9685_SetPWMFreq(PWM_FREQ);
+
+    /* Initialize Hat 2 */
+    DEV_I2C_Init(HAT2_ADDR);
+    PCA9685_Init(HAT2_ADDR);
+    PCA9685_SetPWMFreq(PWM_FREQ);
 }
 
+/* Run specific motor */
+int motor_run(Motor mot, UWORD speed, Direction dir)
+{
+    if (speed > 100) speed = 100;
 
-/*
-* Given a motor, speed that is between 1-100 
-* Set the direction channel based of "dir"
-* Set the duty cycle percentage to "speed"
-*/
-int motor_run(Motor mot, UWORD speed, Direction dir) {
+    /* Invert direction for physically flipped motors */
+    if (mot == MOTOR_FL || mot == MOTOR_RR)
+    {
+        dir = (dir == FORWARD) ? BACKWARD : FORWARD;
+    }
 
+    switch (mot)
+    {
+        case MOTOR_FL:
+            DEV_I2C_Init(HAT2_ADDR);
+            PCA9685_SetPwmDutyCycle(PWMB, speed);
+            if (dir == FORWARD) {
+                PCA9685_SetLevel(BIN1, 0);
+                PCA9685_SetLevel(BIN2, 1);
+            } else {
+                PCA9685_SetLevel(BIN1, 1);
+                PCA9685_SetLevel(BIN2, 0);
+            }
+            break;
 
-	// sanitize and verify speed
-	if (speed > 100) speed = 100;
-	if (speed < 1) {
-		DEBUG("ERROR: speed must be btween 1-100\n");
-		return 1;
-	}
+        case MOTOR_FR:
+            DEV_I2C_Init(HAT2_ADDR);
+            PCA9685_SetPwmDutyCycle(PWMA, speed);
+            if (dir == FORWARD) {
+                PCA9685_SetLevel(AIN1, 0);
+                PCA9685_SetLevel(AIN2, 1);
+            } else {
+                PCA9685_SetLevel(AIN1, 1);
+                PCA9685_SetLevel(AIN2, 0);
+            }
+            break;
 
-	if (mot == MOTOR_A) {
-		// set direction channels for Motor A
-		if (dir == FORWARD) {
-			PCA9685_SetLevel(AIN1, 1);
-			PCA9685_SetLevel(AIN2, 0);
-		} 
-		else if (dir == BACKWARD) {
-			PCA9685_SetLevel(AIN1, 0);
-			PCA9685_SetLevel(AIN2, 1);
-		} 
-		else {
-			DEBUG("ERROR: bad direction, use FORWARD or BACKWARD\n");
-			return 1;
-		}
+        case MOTOR_RL:
+            DEV_I2C_Init(HAT1_ADDR);
+            PCA9685_SetPwmDutyCycle(PWMB, speed);
+            if (dir == FORWARD) {
+                PCA9685_SetLevel(BIN1, 0);
+                PCA9685_SetLevel(BIN2, 1);
+            } else {
+                PCA9685_SetLevel(BIN1, 1);
+                PCA9685_SetLevel(BIN2, 0);
+            }
+            break;
 
-		// set duty cycle for pulse width (Motor A)
-		PCA9685_SetPwmDutyCycle(PWMA, speed);
-	}
-	else if (mot == MOTOR_B) {
-		// set direction channels for Motor B
-		if (dir == FORWARD) {
-			PCA9685_SetLevel(BIN1, 1);
-			PCA9685_SetLevel(BIN2, 0);
-		} 
-		else if (dir == BACKWARD) {
-			PCA9685_SetLevel(BIN1, 0);
-			PCA9685_SetLevel(BIN2, 1);
-		} 
-		else {
-			DEBUG("ERROR: bad direction, use FORWARD or BACKWARD\n");
-			return 1;
-		}
+        case MOTOR_RR:
+            DEV_I2C_Init(HAT1_ADDR);
+            PCA9685_SetPwmDutyCycle(PWMA, speed);
+            if (dir == FORWARD) {
+                PCA9685_SetLevel(AIN1, 0);
+                PCA9685_SetLevel(AIN2, 1);
+            } else {
+                PCA9685_SetLevel(AIN1, 1);
+                PCA9685_SetLevel(AIN2, 0);
+            }
+            break;
+    }
 
-		// set duty cycle for pulse width (Motor B)
-		PCA9685_SetPwmDutyCycle(PWMB, speed);
-	}
-	else {
-		DEBUG("ERROR: invalid motor, use MOTOR_A or MOTOR_B\n");
-		return 1;
-	}
+    return 0;
+}
+/* Stop specific motor */
+int motor_stop(Motor mot)
+{
+    if (mot == MOTOR_FL || mot == MOTOR_FR)
+        DEV_I2C_Init(HAT1_ADDR);
+    else
+        DEV_I2C_Init(HAT2_ADDR);
 
-	return 0;
+    if (mot == MOTOR_FL || mot == MOTOR_RL)
+    {
+        PCA9685_SetLevel(AIN1, 0);
+        PCA9685_SetLevel(AIN2, 0);
+        PCA9685_SetPwmDutyCycle(PWMA, 0);
+    }
+    else
+    {
+        PCA9685_SetLevel(BIN1, 0);
+        PCA9685_SetLevel(BIN2, 0);
+        PCA9685_SetPwmDutyCycle(PWMB, 0);
+    }
+
+    return 0;
 }
 
+void motor_ramp(UBYTE motor,
+                UWORD startSpeed, UWORD endSpeed,
+                UWORD stepDelay, Direction dir)
+{
+    UWORD step = 0;
+    UWORD speed = startSpeed;
+ 
+    while (1) {
+        motor_run(motor, dir, speed);
+        // Sleep for stepDelay millisecond, which allows us to slow down or speed up gradually
+        usleep(stepDelay);  
+        if (speed == endSpeed) break;
 
-/*
- * switch off the specified motor by setting direction channels and pwm to 0
- */
-int motor_stop(Motor mot) {
-	if (mot == MOTOR_A) {
-		PCA9685_SetLevel(AIN1, 0);
-		PCA9685_SetLevel(AIN2, 0);
-		PCA9685_SetLevel(PWMA, 0);
-	}
-	else if (mot == MOTOR_B) {
-		PCA9685_SetLevel(BIN1, 0);
-		PCA9685_SetLevel(BIN2, 0);
-		PCA9685_SetLevel(PWMB, 0);
-	}
-	else {
-		DEBUG("ERROR: invalid motor, use MOTOR_A or MOTOR_B\n");
-		return 1;
-	}
-	return 0;
+        // If end speed is faster than start speed, we are speeding up incrementally
+        // Otherwise, we are slowing down incrementally
+        if (endSpeed > startSpeed) 
+        {
+            speed += 1;
+        } 
+        else if (endSpeed < startSpeed) 
+        {
+            speed -= 1;
+        }
+    }
 }
 
-/*
- * switch off all motors
- */
-int motor_stop_all() {
-	motor_stop(MOTOR_A);
-	motor_stop(MOTOR_B);
-	return 0;
+/* Stop all motors */
+int motor_stop_all(void)
+{
+    motor_stop(MOTOR_FL);
+    motor_stop(MOTOR_FR);
+    motor_stop(MOTOR_RL);
+    motor_stop(MOTOR_RR);
+    return 0;
 }

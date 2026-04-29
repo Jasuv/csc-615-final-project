@@ -24,12 +24,12 @@ SRCS_MOTOR = line_moto_main.c \
           $(LIBDIR)/dev_hardware_i2c.c \
           $(LIBDIR)/sysfs_gpio.c
 
-SRCS_MAIN = latest_ai_motor.c \
-			MotorDriver.c \
-		  $(LIBDIR)/DEV_Config.c \
-		  $(LIBDIR)/PCA9685.c \
-		  $(LIBDIR)/dev_hardware_i2c.c \
-		  $(LIBDIR)/sysfs_gpio.c
+SRCS_MAIN = main.c \
+	  MotorDriver.c \
+	  $(LIBDIR)/DEV_Config.c \
+ 	  $(LIBDIR)/PCA9685.c \
+	  $(LIBDIR)/dev_hardware_i2c.c \
+	  $(LIBDIR)/sysfs_gpio.c
 
 		  
 OBJS = $(patsubst %.c,$(DIST)/%.o,$(notdir $(SRCS)))
