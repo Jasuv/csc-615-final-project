@@ -424,7 +424,7 @@ int main(void) {
 
     /* ================= LINE FOLLOWING LOOP ================= */
 
-int BASE_SPEED   = 80;   // straight speed
+int BASE_SPEED   = 90;   // straight speed
 int SOFT_SPEED   =40;   // gentle correction
 int HARD_SPEED   = 50;    // sharp arc (one side stopped)
 int SEARCH_SPEED = 70;   // recovery arc
