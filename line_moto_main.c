@@ -58,6 +58,7 @@ float distance_cm = -1.0f; /* measured distance by ultrasonic; -1 = unknown */
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 int ir_sensor_state[2] = {0,0}; /* 0 = no obstacle, 1 = obstacle detected */
+int ir_sensor_count = 2;
 
 // camera thread
 volatile char camera_bias[16] = "CENTER";
@@ -89,6 +90,11 @@ void signal_handler(int sig) {
     {
         pthread_cancel(threads[i]);
         pthread_join(threads[i], NULL);
+    }
+    for (int i = 0; i < ir_sensor_count; i++)
+    {
+        pthread_cancel(ir_sensor_thread[i]);
+        pthread_join(ir_sensor_thread[i], NULL);
     }
     gpioTerminate();
     exit(0);
@@ -464,23 +470,24 @@ int turn = 5;
 
 while (!should_exit)
 {
-    int L, M, R;
+    // int L, M, R;
     int ir_left, ir_right;
 
-    pthread_mutex_lock(&lock);
-    R = line_sensor_state[0];
-    M = line_sensor_state[1];
-    L = line_sensor_state[2];
-    pthread_mutex_unlock(&lock);
+    // pthread_mutex_lock(&lock);
+    // R = line_sensor_state[0];
+    // M = line_sensor_state[1];
+    // L = line_sensor_state[2];
+    // pthread_mutex_unlock(&lock);
 
     pthread_mutex_lock(&lock);
     ir_left = ir_sensor_state[0];
     ir_right = ir_sensor_state[1];
     pthread_mutex_unlock(&lock);
 
-    printf("L:%d M:%d R:%d\n", L, M, R);
+    // printf("L:%d M:%d R:%d\n", L, M, R);
     printf("Left IR state: %d  Right IR state: %d\n", ir_left, ir_right);
 
+}                                                                                         // delete this 
     
 
     /* ===== STRAIGHT ===== */
