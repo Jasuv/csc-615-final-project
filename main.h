@@ -12,6 +12,8 @@
 #define LEFT_LINE_SENSOR_PIN 22
 #define MIDDLE_LINE_SENSOR_PIN 17
 #define RIGHT_LINE_SENSOR_PIN 27
+#define LEFT_IR_PIN 21
+#define Right_IR_PIN 20
 
 
 void signal_handler(int sig);
