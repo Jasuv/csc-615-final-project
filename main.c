@@ -265,6 +265,34 @@ void *line_sensor_thread(void *arg)
     return NULL;
 }
 
+void *ir_sensor_thread(void *arg)
+{
+    /*
+    gpioSetMode(LEFT_LINE_SENSOR_PIN, PI_INPUT);
+    gpioSetMode(MIDDLE_LINE_SENSOR_PIN, PI_INPUT);
+    gpioSetMode(RIGHT_LINE_SENSOR_PIN, PI_INPUT);
+    gpioSetPullUpDown(LEFT_LINE_SENSOR_PIN, PI_PUD_UP);
+    gpioSetPullUpDown(MIDDLE_LINE_SENSOR_PIN, PI_PUD_UP);
+    gpioSetPullUpDown(RIGHT_LINE_SENSOR_PIN, PI_PUD_UP);
+
+    while (!should_exit) {
+        int left_value = gpioRead(LEFT_LINE_SENSOR_PIN);
+        int middle_value = gpioRead(MIDDLE_LINE_SENSOR_PIN);
+        int right_value = gpioRead(RIGHT_LINE_SENSOR_PIN);
+
+        pthread_mutex_lock(&lock);
+        line_sensor_state[0] = left_value;
+        line_sensor_state[1] = middle_value;
+        line_sensor_state[2] = right_value;
+        pthread_mutex_unlock(&lock);
+
+        // gpioDelay(20000);
+    }
+    */
+
+    return NULL;
+}
+
 /*
  * Determine motor speed based on vision status
  */
