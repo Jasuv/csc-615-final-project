@@ -1,3 +1,8 @@
+// #define CONTROL_MODE_CAMERA_ONLY
+// #define CONTROL_MODE_LINE_SENSORS_ONLY
+#define CONTROL_MODE_HYBRID
+// #define ENABLE_OBSTACLE_AVOIDANCE
+
 #define FIFO_PATH "/tmp/ai_camera_status"
 #define CAUTION_SPEED 35
 #define CLEAR_SPEED 100

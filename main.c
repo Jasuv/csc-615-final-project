@@ -47,6 +47,7 @@
 volatile char current_status[32] = "INIT";
 volatile int should_exit = 0;
 volatile pid_t camera_pid = 0;
+volatile int camera_ready = 0;
 
 static pthread_t threads[3];
 static int thread_count = 3;
@@ -60,10 +61,6 @@ pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 // camera thread
 volatile char camera_bias[16] = "CENTER";
 
-
-/*
- * Signal handler for graceful cleanup
- */
 
 void signal_handler(int sig) {
     printf("\n[Main] Received signal %d, initiating shutdown...\n", sig);
@@ -126,96 +123,63 @@ pid_t launch_camera_process(void) {
     }
 }
 
-/*
- * Thread function: reads from named pipe and updates status
- */
-void* vision_reader_thread(void* arg) {
-    int fifo_fd;
-    char buffer[64];
-    ssize_t bytes_read;
-
-    /* Try to open the FIFO - with non-blocking mode */
-    while (!should_exit) {
-        fifo_fd = open(FIFO_PATH, O_RDONLY | O_NONBLOCK);
-        
-        if (fifo_fd >= 0) {
-            break;
-        }
-        sleep(1);
-    }
-
-    /* Read loop */
-    while (!should_exit) {
-        memset(buffer, 0, sizeof(buffer));
-        bytes_read = read(fifo_fd, buffer, sizeof(buffer) - 1);
-
-        if (bytes_read > 0) {
-            /* Remove newline */
-            if (buffer[bytes_read - 1] == '\n') {
-                buffer[bytes_read - 1] = '\0';
-            } else {
-                buffer[bytes_read] = '\0';
-            }
-
-            /* Update global status */
-            strncpy((char*)current_status, buffer, sizeof(current_status) - 1);
-        } else if (bytes_read < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-            /* Real error (not just no data available) */
-            close(fifo_fd);
-            
-            /* Try to reconnect */
-            while (!should_exit) {
-                fifo_fd = open(FIFO_PATH, O_RDONLY | O_NONBLOCK);
-                if (fifo_fd >= 0) break;
-                sleep(1);
-            }
-        }
-
-        usleep(50000);
-    }
-
-    if (fifo_fd >= 0) {
-        close(fifo_fd);
-    }
-    return NULL;
-}
-
-
-///camera 
 void* camera_thread(void* arg)
 {
     int fifo_fd;
-    char buffer[32];
+    char buffer[64];
+    ssize_t bytes_read;
 
     /* Wait until FIFO exists */
     while (access(FIFO_PATH, F_OK) == -1 && !should_exit)
         usleep(100000);
 
-    fifo_fd = open(FIFO_PATH, O_RDONLY | O_NONBLOCK);
+    /* Open FIFO with retry */
+    while (!should_exit) {
+        fifo_fd = open(FIFO_PATH, O_RDONLY | O_NONBLOCK);
+        if (fifo_fd >= 0) break;
+        sleep(1);
+    }
+
     if (fifo_fd < 0) {
-        perror("FIFO open failed");
+        perror("[CAMERA] FIFO open failed");
         return NULL;
     }
 
+    printf("[CAMERA] Connected to FIFO\n");
+
     while (!should_exit)
     {
-        int bytes = read(fifo_fd, buffer, sizeof(buffer)-1);
+        memset(buffer, 0, sizeof(buffer));
+        bytes_read = read(fifo_fd, buffer, sizeof(buffer) - 1);
 
-        if (bytes > 0)
+        if (bytes_read > 0)
         {
-            buffer[bytes] = '\0';
+            /* Remove newline */
+            if (buffer[bytes_read - 1] == '\n')
+                buffer[bytes_read - 1] = '\0';
+            else
+                buffer[bytes_read] = '\0';
 
-            
-            char *newline = strchr(buffer, '\n');
-            if (newline)
-                *newline = '\0';
+            printf("[CAMERA] raw: '%s'\n", buffer);
 
             pthread_mutex_lock(&lock);
-            strncpy((char*)camera_bias, buffer, sizeof(camera_bias)-1);
-            camera_bias[sizeof(camera_bias)-1] = '\0';  
+            strncpy((char*)camera_bias, buffer, sizeof(camera_bias) - 1);
+            camera_bias[sizeof(camera_bias) - 1] = '\0';
+            camera_ready = 1;
             pthread_mutex_unlock(&lock);
 
             printf("[CAMERA] Bias: '%s'\n", camera_bias);
+        }
+        else if (bytes_read < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
+        {
+            /* Real error - try to reconnect */
+            printf("[CAMERA] FIFO error, reconnecting...\n");
+            close(fifo_fd);
+            while (!should_exit) {
+                fifo_fd = open(FIFO_PATH, O_RDONLY | O_NONBLOCK);
+                if (fifo_fd >= 0) break;
+                sleep(1);
+            }
         }
 
         usleep(50000);
@@ -295,12 +259,11 @@ void *line_sensor_thread(void *arg)
         line_sensor_state[2] = right_value;
         pthread_mutex_unlock(&lock);
 
-        gpioDelay(20000);
+        // gpioDelay(20000);
     }
 
     return NULL;
 }
-
 
 /*
  * Determine motor speed based on vision status
@@ -315,12 +278,9 @@ int get_motor_speed_from_vision(const char* status) {
     }
 }
 
-int main(void) {
-    // pthread_t reader_thread;
-    // pthread_t line_thread;
-    // pthread_t ultrasonic_thread_id;
-    int target_speed = 50, current_speed_a = 0, current_speed_b = 0;
 
+
+int main(void) {
     printf("========================================\n");
     printf("  AI-Driven Motor Control System\n");
     printf("  Dual Motor (A & B) Configuration\n");
@@ -333,26 +293,12 @@ int main(void) {
 	gpioSetMode(TRIG_PIN, PI_OUTPUT);
 	printf("Finished setting GPIO pins\n");
 
-    /* Line sensors initialized in the line_sensor_thread (3 sensors) */
-
-
-    /* Launch compiled camera application as background process */
-    // printf("[Main] Launching camera application...\n");
-     /* Start camera reader thread FIRST */
-    pthread_t cam_thread;
-    if (pthread_create(&threads[0], NULL, camera_thread, NULL) != 0) {
-        perror("Camera thread failed");
-        return 1;
-    }
-
-    /* THEN launch ai_camera */
-    //camera_pid = launch_camera_process();
+    camera_pid = launch_camera_process();
     if (camera_pid < 0) {
         printf("[Main] ERROR: Failed to launch camera application\n");
         return 1;
     }
 
-    /* Initialize hardware */
     printf("[Main] Initializing pigpio...\n");
     if (gpioInitialise() < 0) {
         printf("[Main] ERROR: pigpio initialization failed\n");
@@ -383,12 +329,12 @@ int main(void) {
 
     /* Start vision reader thread */
     // printf("[Main] Starting vision reader thread...\n");
-    // if (pthread_create(&reader_thread, NULL, vision_reader_thread, NULL) != 0) {
-    //     printf("[Main] ERROR: Failed to create vision reader thread\n");
-    //     gpioTerminate();
-    //     if (camera_pid > 0) kill(camera_pid, SIGTERM);
-    //     return 1;
-    // }
+    if (pthread_create(&threads[0], NULL, camera_thread, NULL) != 0) {
+        printf("[Main] ERROR: Failed to create vision reader thread\n");
+        gpioTerminate();
+        if (camera_pid > 0) kill(camera_pid, SIGTERM);
+        return 1;
+    }
 
     /* Start line sensor thread (3-sensor) */
     printf("[Main] Starting line sensor thread...\n");
@@ -408,120 +354,202 @@ int main(void) {
         return 1;
     }
 
-    /* Give camera application time to initialize and create the FIFO */
-    //  printf("[Main] Waiting for camera application to initialize...\n");
-    //  while(!should_exit && strcmp((char*)current_status, "INIT") == 0)
-    //  {
-    //      usleep(100000);
-    //  }
-    //  printf("[Main] Camera Ready\n");
+    printf("[Main] Waiting for camera to send first frame...\n");
+    while (!should_exit && !camera_ready)
+    {
+        printf("[Main] Waiting for camera data...\n");
+        usleep(500000);  // check every 500ms
+    }
+    printf("[Main] Camera sending data — starting motors\n");
 
-//thread for camera
 
     printf("\n[Main] Motor control starting...\n");
-    // printf("[Main] Motor speed controlled by AI vision feedback\n");
+#ifdef CONTROL_MODE_CAMERA_ONLY
+    printf("[Main] Mode: CAMERA ONLY\n");
+#elif defined(CONTROL_MODE_LINE_SENSORS_ONLY)
+    printf("[Main] Mode: LINE SENSORS ONLY\n");
+#elif defined(CONTROL_MODE_HYBRID)
+    printf("[Main] Mode: HYBRID (Camera + Line Sensors)\n");
+#endif
     printf("[Main] Press Ctrl+C to exit\n\n");
 
-    /* ================= LINE FOLLOWING LOOP ================= */
+    /* ================= CONTROL LOOP ================= */
 
-int BASE_SPEED   = 90;   // straight speed
-int SOFT_SPEED   =40;   // gentle correction
-int HARD_SPEED   = 50;    // sharp arc (one side stopped)
-int SEARCH_SPEED = 70;   // recovery arc
+int FULL_SPEED   = 100;
+int HARD_SPEED   = 50;
+int SOFT_SPEED   = 20;
+int SEARCH_SPEED = 70;
 
-int last_direction = 0;  // -1 = left, 1 = right
-int turn = 5;
+int last_direction = 0;
+/* Track last seen sensor pattern when any sensor detected the line (0=detect). */
+int last_seen_L = 1, last_seen_M = 1, last_seen_R = 1;
+/* Recovery state: when set, keep harsh rotation until middle sensor detects line */
+int recovery_mode = 0; /* 0 = normal, 1 = recovering */
+int recovery_dir = 0;  /* -1 = right, 1 = left */
+/* Forced-line mode: lock to line-sensor logic for a short duration when a 90° begins */
+int forced_line_mode = 0;
+uint32_t forced_line_start = 0;
+#define FORCED_LINE_DURATION_US (5000u * 1000u)
 
-// witout camera
-
-while (!should_exit)
-{
-   
-    
-
-
-
-
+while (!should_exit) {
     int L, M, R;
-
     pthread_mutex_lock(&lock);
-    R = line_sensor_state[0];
+    /* Correct mapping: index 0=LEFT, 1=MIDDLE, 2=RIGHT */
+    L = line_sensor_state[0];
     M = line_sensor_state[1];
-    L = line_sensor_state[2];
+    R = line_sensor_state[2];
     pthread_mutex_unlock(&lock);
 
-    printf("L:%d M:%d R:%d\n", L, M, R);
+    char local_bias[16];
+    pthread_mutex_lock(&lock);
+    strcpy(local_bias, (char*)camera_bias);
+    pthread_mutex_unlock(&lock);
 
-    
+#ifdef ENABLE_OBSTACLE_AVOIDANCE
+    const float SAFE_STOP_CM = 20.0f;
+    if (measured_distance > 0 && measured_distance < SAFE_STOP_CM) {
+        target_left = target_right = 0;
+        printf("[US] Object %.1fcm → Emergency stop\n", measured_distance);
+    }
+    /* Smooth speed transitions for Motor A (left) */
+    if (current_speed_a != target_left) {
+        if (target_left > current_speed_a) {
+            current_speed_a++;
+        } else {
+            if (current_speed_a - 5 < 0) {
+                current_speed_a = 0;
+            } else {
+                current_speed_a -= 5;
+            }
+        }   
+        motor_run(MOTOR_FR, current_speed_a, FORWARD);
+        motor_run(MOTOR_RR, current_speed_a, BACKWARD);
+        printf("[Motor A] Speed: %d%% | L, M, R: %d %d %d | [Vision] Status: %s\n", current_speed_a, L, M, R, current_status);
+    }
+    /* Smooth speed transitions for Motor B (right) */
+    if (current_speed_b != target_right) {
+        if (target_right > current_speed_b) {
+            current_speed_b++;
+        } else {
+            if (current_speed_b - 5 < 0) {
+                current_speed_b = 0;
+            } else {
+                current_speed_b -= 5;
+            }
+        }
+        motor_run(MOTOR_FL,current_speed_b, FORWARD);
+        motor_run(MOTOR_RL,current_speed_b, BACKWARD);
+        printf("[Motor B] Speed: %d%% | L, M, R: %d %d %d | [Vision] Status: %s\n", current_speed_a, L, M, R, current_status);
+    }
+#endif
+
+#ifdef CONTROL_MODE_CAMERA_ONLY
+    /* ===== CAMERA ONLY ===== */
+    printf("[CAM] %s\n", local_bias);
+
+    if (strcmp(local_bias, "CENTER") == 0)
+    {
+        motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+    }
+    else if (strcmp(local_bias, "LEFT") == 0)
+    {
+        motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_FL, HARD_SPEED, FORWARD);
+        motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_RL, HARD_SPEED, FORWARD);
+    }
+    else if (strcmp(local_bias, "RIGHT") == 0)
+    {
+        motor_run(MOTOR_FR, HARD_SPEED, FORWARD);
+        motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_RR, HARD_SPEED, FORWARD);
+        motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+    }
+    else if (strcmp(local_bias, "HARD LEFT") == 0)
+    {
+        motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_FL, SOFT_SPEED, FORWARD);
+        motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_RL, SOFT_SPEED, FORWARD);
+    }
+    else if (strcmp(local_bias, "HARD RIGHT") == 0)
+    {
+        motor_run(MOTOR_FR, SOFT_SPEED, FORWARD);
+        motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_RR, SOFT_SPEED, FORWARD);
+        motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+    }
+    else
+    {
+        printf("[CAM] NO PATH → STOP\n");
+        motor_stop_all();
+    }
+
+#elif defined(CONTROL_MODE_LINE_SENSORS_ONLY)
+    /* ===== LINE SENSORS ONLY ===== */
+    printf("L:%d M:%d R:%d\n", L, M, R);
 
     /* ===== STRAIGHT ===== */
     if (L == 0 && M == 1 && R == 0)
     {
         last_direction = 0;
 
-        motor_run(MOTOR_FL, BASE_SPEED , FORWARD);
-        motor_run(MOTOR_FR, BASE_SPEED , FORWARD);
-        motor_run(MOTOR_RL, BASE_SPEED , FORWARD);
-        motor_run(MOTOR_RR, BASE_SPEED , FORWARD);
-        printf("Straight");
+        motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
+        printf("Straight\n");
     }
 
-    /* ===== hard 90 RIGHT ===== */
-    else if (L == 0 && M == 1 && R == 1)
+    /* ===== hard 90 right ===== */
+    else if (L == 1 && M == 1 && R == 0)
     {
         last_direction = -1;
 
-        motor_run(MOTOR_FR,HARD_SPEED , BACKWARD);
-        motor_run(MOTOR_FL, BASE_SPEED, FORWARD);
-        motor_run(MOTOR_RR,HARD_SPEED, BACKWARD);
-        motor_run(MOTOR_RL, BASE_SPEED, FORWARD);
-        printf("hard right");
-        while (1)
-        {
-            turn --;
-            if (turn ==0)
-            {
-               break; 
-            }
-        }
-            }
+        motor_run(MOTOR_FR, HARD_SPEED, BACKWARD);
+        motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_RR, HARD_SPEED, BACKWARD);
+        motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+        printf("hard right\n");
+    }
 
-    /* ===== hard 90  left ===== */
-    else if (L == 1 && M == 1 && R == 0)
+    /* ===== hard 90 left ===== */
+    else if (L == 0 && M == 1 && R == 1)
     {
         last_direction = 1;
 
-        motor_run(MOTOR_FR, BASE_SPEED, FORWARD);
+        motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
         motor_run(MOTOR_FL, HARD_SPEED, BACKWARD);
-        motor_run(MOTOR_RR, BASE_SPEED, FORWARD);
+        motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
         motor_run(MOTOR_RL, HARD_SPEED, BACKWARD);
-        printf("hard left");
+        printf("hard left\n");
     }
 
-    /* ===== soft right  ===== */
-    else if (L == 0 && M == 0 && R == 1)
-    {
-         last_direction = -1;
-
-       motor_run(MOTOR_FL, BASE_SPEED, FORWARD);
-       motor_run(MOTOR_FR,SOFT_SPEED, BACKWARD);
-       motor_run(MOTOR_RL,BASE_SPEED, FORWARD);
-       motor_run(MOTOR_RR, SOFT_SPEED, BACKWARD);
-       printf("soft right");
-    }
-
-    /* ===== soft left   ===== */
+    /* ===== soft right ===== */
     else if (L == 1 && M == 0 && R == 0)
     {
+        last_direction = -1;
+
+        motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_FR, SOFT_SPEED, BACKWARD);
+        motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_RR, SOFT_SPEED, BACKWARD);
+        printf("soft right\n");
+    }
+
+    /* ===== soft left ===== */
+    else if (L == 0 && M == 0 && R == 1)
+    {
         last_direction = 1;
 
-       motor_run(MOTOR_FR, BASE_SPEED, FORWARD);
-       motor_run(MOTOR_FL,SOFT_SPEED, BACKWARD);
-       motor_run(MOTOR_RR,BASE_SPEED, FORWARD);
-       motor_run(MOTOR_RL, SOFT_SPEED, BACKWARD);
-       printf("soft left");
-       
-       
+        motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_FL, SOFT_SPEED, BACKWARD);
+        motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
+        motor_run(MOTOR_RL, SOFT_SPEED, BACKWARD);
+        printf("soft left\n");
     }
 
     /* ===== LINE LOST ===== */
@@ -539,121 +567,250 @@ while (!should_exit)
         else
         {
             motor_run(MOTOR_FL, SEARCH_SPEED, BACKWARD);
-            motor_run(MOTOR_FR,SEARCH_SPEED, FORWARD);
+            motor_run(MOTOR_FR, SEARCH_SPEED, FORWARD);
             motor_run(MOTOR_RL, SEARCH_SPEED, BACKWARD);
             motor_run(MOTOR_RR, SEARCH_SPEED, FORWARD);
         }
     }
 
-    gpioDelay(140000);   // 
-}
+#elif defined(CONTROL_MODE_HYBRID)
+    /* ===== HYBRID: Camera + Line Sensors ===== */
+    /* Print one clear action line describing exactly what we're doing now */
+    if (recovery_mode) {
+        const char *dir_str = (recovery_dir == -1) ? "HARD RIGHT" : (recovery_dir == 1 ? "HARD LEFT" : "UNKNOWN");
+        printf("[HYBRID-ACTION] RECOVERING: %s | L:%d M:%d R:%d | Cam: %s\n", dir_str, L, M, R, local_bias);
+    } else {
+        printf("[HYBRID-ACTION] NORMAL   | L:%d M:%d R:%d | Cam: %s\n", L, M, R, local_bias);
+    }
 
-//wioth camera
-// while (!should_exit)
-// {
-//     char local_bias[16];
+    /* Update recent sensor history when any sensor detects the line */
+    if (L == 0 || M == 0 || R == 0) {
+        last_seen_L = L;
+        last_seen_M = M;
+        last_seen_R = R;
+    }
 
-//     pthread_mutex_lock(&lock);
-//     strcpy(local_bias, (char*)camera_bias);
-//     pthread_mutex_unlock(&lock);
+    /* Forced-line timeout handling */
+    uint32_t now_tick = gpioTick();
+    if (forced_line_mode) {
+        if ((now_tick - forced_line_start) >= FORCED_LINE_DURATION_US) {
+            forced_line_mode = 0;
+            printf("[HYBRID] forced line-mode expired after 5s\n");
+        }
+    }
 
-//     printf("Camera: %s\n", local_bias);
+    /* If already in recovery, continue harsh rotation until middle sensor triggers */
+    if (recovery_mode) {
+        if (recovery_dir == -1) {
+            /* hard right rotation: right side reverse, left side forward */
+            motor_run(MOTOR_FR, FULL_SPEED, BACKWARD);
+            motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RR, FULL_SPEED, BACKWARD);
+            motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+            printf("[HYBRID-DRIVE] CMD FR:BACKWARD@%d FL:FORWARD@%d RR:BACKWARD@%d RL:FORWARD@%d\n", FULL_SPEED, FULL_SPEED, FULL_SPEED, FULL_SPEED);
+        } else if (recovery_dir == 1) {
+            /* hard left rotation: left side reverse, right side forward */
+            motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_FL, FULL_SPEED, BACKWARD);
+            motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RL, FULL_SPEED, BACKWARD);
+            printf("[HYBRID-DRIVE] CMD FR:FORWARD@%d FL:BACKWARD@%d RR:FORWARD@%d RL:BACKWARD@%d\n", FULL_SPEED, FULL_SPEED, FULL_SPEED, FULL_SPEED);
+        }
 
-//     /* ===== CAMERA IS 100% MASTER ===== */
+        /* Exit recovery only when middle sensor sees the line */
+        if (M == 0) {
+            recovery_mode = 0;
+            recovery_dir = 0;
+            last_seen_L = last_seen_M = last_seen_R = 1;
+            printf("[HYBRID-RECOVER] middle sensor triggered — recovery complete\n");
+        }
 
-//     if (strcmp(local_bias, "CENTER") == 0)
-//     {
-//         motor_run(MOTOR_FL, 100, FORWARD);
-//         motor_run(MOTOR_FR, 100, FORWARD);
-//         motor_run(MOTOR_RL, 100, FORWARD);
-//         motor_run(MOTOR_RR, 100, FORWARD);
-//     }
+        gpioDelay(1000);
+        continue;
+    }
 
-//     else if (strcmp(local_bias, "LEFT") == 0)
-//     {
-//         motor_run(MOTOR_FL, 60, FORWARD);
-//         motor_run(MOTOR_FR, 100, FORWARD);
-//         motor_run(MOTOR_RL, 60, FORWARD);
-//         motor_run(MOTOR_RR, 100, FORWARD);
-//     }
+    /* If forced_line_mode is active, run the sensor-only decision tree now */
+    if (forced_line_mode) {
+        printf("[HYBRID] FORCED-LINE active — using sensors for steering (forced %ums)\n", (unsigned int)((FORCED_LINE_DURATION_US - (now_tick - forced_line_start))/1000));
 
-//     else if (strcmp(local_bias, "RIGHT") == 0)
-//     {
-//         motor_run(MOTOR_FL, 100, FORWARD);
-//         motor_run(MOTOR_FR, 60, FORWARD);
-//         motor_run(MOTOR_RL, 100, FORWARD);
-//         motor_run(MOTOR_RR, 60, FORWARD);
-//     }
+        /* ===== STRAIGHT ===== */
+        if (L == 0 && M == 1 && R == 0) {
+            last_direction = 0;
+            motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
+            printf("[HYBRID-LINE] Straight\n");
+        }
+        else if (L == 1 && M == 1 && R == 0) {
+            last_direction = -1;
+            motor_run(MOTOR_FR, FULL_SPEED, BACKWARD);
+            motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RR, FULL_SPEED, BACKWARD);
+            motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+            printf("[HYBRID-LINE] hard right\n");
+        }
+        else if (L == 0 && M == 1 && R == 1) {
+            last_direction = 1;
+            motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_FL, FULL_SPEED, BACKWARD);
+            motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RL, FULL_SPEED, BACKWARD);
+            printf("[HYBRID-LINE] hard left\n");
+        }
+        else if (L == 1 && M == 0 && R == 0) {
+            last_direction = -1;
+            motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_FR, SOFT_SPEED, BACKWARD);
+            motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RR, SOFT_SPEED, BACKWARD);
+            printf("[HYBRID-LINE] soft right\n");
+        }
+        else if (L == 0 && M == 0 && R == 1) {
+            last_direction = 1;
+            motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_FL, SOFT_SPEED, BACKWARD);
+            motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RL, SOFT_SPEED, BACKWARD);
+            printf("[HYBRID-LINE] soft left\n");
+        }
+        else {
+            printf("[HYBRID-LINE] SEARCHING...\n");
+            if (last_direction <= 0) {
+                motor_run(MOTOR_FL, SEARCH_SPEED, FORWARD);
+                motor_run(MOTOR_FR, SEARCH_SPEED, BACKWARD);
+                motor_run(MOTOR_RL, SEARCH_SPEED, FORWARD);
+                motor_run(MOTOR_RR, SEARCH_SPEED, BACKWARD);
+            } else {
+                motor_run(MOTOR_FL, SEARCH_SPEED, BACKWARD);
+                motor_run(MOTOR_FR, SEARCH_SPEED, FORWARD);
+                motor_run(MOTOR_RL, SEARCH_SPEED, BACKWARD);
+                motor_run(MOTOR_RR, SEARCH_SPEED, FORWARD);
+            }
+        }
 
-//     else if (strcmp(local_bias, "HARD LEFT") == 0)
-//     {
-//         motor_run(MOTOR_FL, 20, FORWARD);
-//         motor_run(MOTOR_FR, 120, FORWARD);
-//         motor_run(MOTOR_RL, 20, FORWARD);
-//         motor_run(MOTOR_RR, 120, FORWARD);
-//     }
+        gpioDelay(1000);
+        continue;
+    }
 
-//     else if (strcmp(local_bias, "HARD RIGHT") == 0)
-//     {
-//         motor_run(MOTOR_FL, 120, FORWARD);
-//         motor_run(MOTOR_FR, 20, FORWARD);
-//         motor_run(MOTOR_RL, 120, FORWARD);
-//         motor_run(MOTOR_RR, 20, FORWARD);
-//     }
+    /* If sensors are all OFF (no detection) consult last seen to decide a hard
+       turn; otherwise (mixed readings) prefer the camera's decision. */
+    if (L == 1 && M == 1 && R == 1) {
+        /* All sensors off — use last seen to choose a recovery hard turn */
+        if (last_seen_R == 0) {
+            /* middle+right previously saw line → start hard right recovery */
+            recovery_mode = 1;
+            recovery_dir = -1;
+            /* enter forced line-mode for 5s to ensure turn completes */
+            forced_line_mode = 1;
+            forced_line_start = now_tick;
+            motor_run(MOTOR_FR, FULL_SPEED, BACKWARD);
+            motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RR, FULL_SPEED, BACKWARD);
+            motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+            printf("[HYBRID-RECOVER] START HARD RIGHT (based on history)\n");
+            printf("[HYBRID-DRIVE] CMD FR:BACKWARD@%d FL:FORWARD@%d RR:BACKWARD@%d RL:FORWARD@%d\n", FULL_SPEED, FULL_SPEED, FULL_SPEED, FULL_SPEED);
+            /* keep history until recovery completes (wait for middle sensor) */
+        } else if (last_seen_L == 0) {
+            /* middle+left previously saw line → start hard left recovery */
+            recovery_mode = 1;
+            recovery_dir = 1;
+            /* enter forced line-mode for 5s to ensure turn completes */
+            forced_line_mode = 1;
+            forced_line_start = now_tick;
+            motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_FL, FULL_SPEED, BACKWARD);
+            motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RL, FULL_SPEED, BACKWARD);
+            printf("[HYBRID-RECOVER] START HARD LEFT (based on history)\n");
+            printf("[HYBRID-DRIVE] CMD FR:FORWARD@%d FL:BACKWARD@%d RR:FORWARD@%d RL:BACKWARD@%d\n", FULL_SPEED, FULL_SPEED, FULL_SPEED, FULL_SPEED);
+            /* keep history until recovery completes (wait for middle sensor) */
+        } else {
+            printf("[HYBRID-RECOVER] Unknown history — last_seen L:%d R:%d M:%d — falling back to camera\n", last_seen_L, last_seen_R, last_seen_M);
+            /* Unknown history — fallback to camera; clear history so we don't loop */
+            last_seen_L = last_seen_M = last_seen_R = 1;
+            if (strcmp(local_bias, "CENTER") == 0) {
+                motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
+                motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+                motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
+                motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+            } else if (strcmp(local_bias, "LEFT") == 0) {
+                motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
+                motor_run(MOTOR_FL, HARD_SPEED, FORWARD);
+                motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
+                motor_run(MOTOR_RL, HARD_SPEED, FORWARD);
+            } else if (strcmp(local_bias, "RIGHT") == 0) {
+                motor_run(MOTOR_FR, HARD_SPEED, FORWARD);
+                motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+                motor_run(MOTOR_RR, HARD_SPEED, FORWARD);
+                motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+            } else {
+                motor_stop_all();
+            }
+        }
+    } else {
+        /* Sensors are mixed — prefer camera steering decisions */
+        /* Detect immediate 90° sensor patterns and force line mode */
+        if (L == 1 && M == 1 && R == 0) {
+            /* hard right indicated by sensors — start forced line-mode */
+            forced_line_mode = 1;
+            forced_line_start = now_tick;
+            last_direction = -1;
+            motor_run(MOTOR_FR, FULL_SPEED, BACKWARD);
+            motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RR, FULL_SPEED, BACKWARD);
+            motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+            printf("[HYBRID] Detected immediate HARD RIGHT sensor pattern — forcing line-mode\n");
+            gpioDelay(1000);
+            continue;
+        } else if (L == 0 && M == 1 && R == 1) {
+            /* hard left indicated by sensors — start forced line-mode */
+            forced_line_mode = 1;
+            forced_line_start = now_tick;
+            last_direction = 1;
+            motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_FL, FULL_SPEED, BACKWARD);
+            motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RL, FULL_SPEED, BACKWARD);
+            printf("[HYBRID] Detected immediate HARD LEFT sensor pattern — forcing line-mode\n");
+            gpioDelay(1000);
+            continue;
+        }
+        if (strcmp(local_bias, "CENTER") == 0) {
+            motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+        } else if (strcmp(local_bias, "LEFT") == 0) {
+            motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_FL, HARD_SPEED, FORWARD);
+            motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RL, HARD_SPEED, FORWARD);
+        } else if (strcmp(local_bias, "RIGHT") == 0) {
+            motor_run(MOTOR_FR, HARD_SPEED, FORWARD);
+            motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RR, HARD_SPEED, FORWARD);
+            motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+        } else if (strcmp(local_bias, "HARD LEFT") == 0) {
+            motor_run(MOTOR_FR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_FL, SOFT_SPEED, FORWARD);
+            motor_run(MOTOR_RR, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RL, SOFT_SPEED, FORWARD);
+        } else if (strcmp(local_bias, "HARD RIGHT") == 0) {
+            motor_run(MOTOR_FR, SOFT_SPEED, FORWARD);
+            motor_run(MOTOR_FL, FULL_SPEED, FORWARD);
+            motor_run(MOTOR_RR, SOFT_SPEED, FORWARD);
+            motor_run(MOTOR_RL, FULL_SPEED, FORWARD);
+        } else {
+            motor_stop_all();
+        }
+    }
 
-//     else
-//     {
-//         printf("NO PATH → STOP\n");
-//         motor_stop_all();
-//     }
+#endif
 
-//     gpioDelay(10000);  // 100ms loop
-// }
-/* =============================================================== */
-
-        /* Ultrasonic safety override: if object closer than SAFE_STOP_CM, stop */
-        // const float SAFE_STOP_CM = 20.0f;
-        // if (measured_distance > 0 && measured_distance < SAFE_STOP_CM) {
-        //     target_left = target_right = 0;
-        //     printf("[US] Object %.1fcm → Emergency stop\n", measured_distance);
-        // }
-      
-        // /* Smooth speed transitions for Motor A (left) */
-        // if (current_speed_a != target_left) {
-        //     if (target_left > current_speed_a) {
-        //         current_speed_a++;
-        //     } else {
-        //         if (current_speed_a - 5 < 0) {
-        //             current_speed_a = 0;
-        //         } else {
-        //             current_speed_a -= 5;
-        //         }
-        //     }
-
-        //     motor_run(MOTOR_FR, current_speed_a, FORWARD);
-        //     motor_run(MOTOR_RR, current_speed_a, BACKWARD);
-        //     printf("[Motor A] Speed: %d%% | L, M, R: %d %d %d | [Vision] Status: %s\n", current_speed_a, L, M, R, current_status);
-        // }
-
-        // /* Smooth speed transitions for Motor B (right) */
-        // if (current_speed_b != target_right) {
-        //     if (target_right > current_speed_b) {
-        //         current_speed_b++;
-        //     } else {
-        //         if (current_speed_b - 5 < 0) {
-        //             current_speed_b = 0;
-        //         } else {
-        //             current_speed_b -= 5;
-        //         }
-        //     }
-
-        //     motor_run(MOTOR_FL,current_speed_b, FORWARD);
-        //     motor_run(MOTOR_RL,current_speed_b, BACKWARD);
-        //     printf("[Motor B] Speed: %d%% | L, M, R: %d %d %d | [Vision] Status: %s\n", current_speed_a, L, M, R, current_status);
-        // }
-
-        /* Small delay between updates */
+    gpioDelay(1000);
     
+}
 
     printf("\n[Main] Vision feedback stopped. Stopping motors...\n");
 

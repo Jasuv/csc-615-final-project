@@ -1,71 +1,88 @@
 CC = gcc
+CXX = g++
 
-CFLAGS = -Wall -Wextra -O2 -D USE_DEV_LIB -Ilib
-LIBS = -lpigpio -lrt -lpthread -lm
-
-TARGET_AI = motor_ai
-TARGET_MOTOR = line_motor
-TARGET_MAIN = latest_ai_motor
 DIST = dist
 LIBDIR = lib
 
-# Motor control driven by AI vision feedback via named pipe
-SRCS_AI = ai_camera.c \
-          MotorDriver.c \
-          $(LIBDIR)/DEV_Config.c \
-          $(LIBDIR)/PCA9685.c \
-          $(LIBDIR)/dev_hardware_i2c.c \
-          $(LIBDIR)/sysfs_gpio.c
+# Compilation flags
+CFLAGS = -Wall -Wextra -O2 -D USE_DEV_LIB -I$(LIBDIR)
+CXXFLAGS = -Wall -Wextra -O2 $(shell pkg-config --cflags opencv4) -I$(LIBDIR)
 
+# Libraries
+LIBS = -lpigpio -lrt -lpthread -lm
+OPENCV_LIBS = $(shell pkg-config --libs opencv4)
+
+# Targets
+TARGET_AI = motor_ai
+TARGET_MOTOR = line_motor
+TARGET_MAIN = latest_ai_motor
+
+# --- 1. AI Motor (Mix of C++ and C) ---
+SRCS_AI_CPP = ai_camera.cpp
+SRCS_AI_C = MotorDriver.c \
+            $(LIBDIR)/DEV_Config.c \
+            $(LIBDIR)/PCA9685.c \
+            $(LIBDIR)/dev_hardware_i2c.c \
+            $(LIBDIR)/sysfs_gpio.c
+
+# Process C++ and C files into separate object lists, then combine them
+OBJS_AI = $(patsubst %.cpp,$(DIST)/%.o,$(notdir $(SRCS_AI_CPP))) \
+          $(patsubst %.c,$(DIST)/%.o,$(notdir $(SRCS_AI_C)))
+
+
+# --- 2. Line Motor (Pure C) ---
 SRCS_MOTOR = line_moto_main.c \
-			MotorDriver.c \
-          $(LIBDIR)/DEV_Config.c \
-          $(LIBDIR)/PCA9685.c \
-          $(LIBDIR)/dev_hardware_i2c.c \
-          $(LIBDIR)/sysfs_gpio.c
+             MotorDriver.c \
+             $(LIBDIR)/DEV_Config.c \
+             $(LIBDIR)/PCA9685.c \
+             $(LIBDIR)/dev_hardware_i2c.c \
+             $(LIBDIR)/sysfs_gpio.c
 
-SRCS_MAIN = main.c \
-	  MotorDriver.c \
-	  $(LIBDIR)/DEV_Config.c \
- 	  $(LIBDIR)/PCA9685.c \
-	  $(LIBDIR)/dev_hardware_i2c.c \
-	  $(LIBDIR)/sysfs_gpio.c
-
-		  
-OBJS = $(patsubst %.c,$(DIST)/%.o,$(notdir $(SRCS)))
-OBJS_CONCURRENT = $(patsubst %.c,$(DIST)/%.o,$(notdir $(SRCS_CONCURRENT)))
-OBJS_AI = $(patsubst %.c,$(DIST)/%.o,$(notdir $(SRCS_AI)))
 OBJS_MOTOR = $(patsubst %.c,$(DIST)/%.o,$(notdir $(SRCS_MOTOR)))
+
+
+# --- 3. Main Motor (Pure C) ---
+SRCS_MAIN = main.c \
+            MotorDriver.c \
+            $(LIBDIR)/DEV_Config.c \
+            $(LIBDIR)/PCA9685.c \
+            $(LIBDIR)/dev_hardware_i2c.c \
+            $(LIBDIR)/sysfs_gpio.c
+
 OBJS_MAIN = $(patsubst %.c,$(DIST)/%.o,$(notdir $(SRCS_MAIN)))
 
-all: dirs $(TARGET_AI) $(TARGET_MOTOR) $(TARGET_MAIN)
+# Tell Make where to search for source files
+vpath %.c . $(LIBDIR)
+vpath %.cpp .
 
-run: motor_ai
-	sudo ./motor_ai
+.PHONY: all clean run
 
-dirs:
+all: $(TARGET_AI) $(TARGET_MOTOR) $(TARGET_MAIN)
+
+run: $(TARGET_AI)
+	sudo ./$(TARGET_AI)
+
+# Output directory creation
+$(DIST):
 	mkdir -p $(DIST)
 
-$(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $(TARGET) $(LIBS)
-
-$(TARGET_CONCURRENT): $(OBJS_CONCURRENT)
-	$(CC) $(OBJS_CONCURRENT) -o $(TARGET_CONCURRENT) $(LIBS)
-
+# Executable linking
+# TARGET_AI must be linked with $(CXX) because it includes C++ OpenCV code
 $(TARGET_AI): $(OBJS_AI)
-	$(CC) $(OBJS_AI) -o $(TARGET_AI) $(LIBS)
+	$(CXX) $^ -o $@ $(LIBS) $(OPENCV_LIBS)
 
 $(TARGET_MOTOR): $(OBJS_MOTOR)
-	$(CC) $(OBJS_MOTOR) -o $(TARGET_MOTOR) $(LIBS)
+	$(CC) $^ -o $@ $(LIBS)
 
 $(TARGET_MAIN): $(OBJS_MAIN)
-	$(CC) $(OBJS_MAIN) -o $(TARGET_MAIN) $(LIBS)
+	$(CC) $^ -o $@ $(LIBS)
 
-$(DIST)/%.o: %.c
+# Object file compilation rules
+$(DIST)/%.o: %.c | $(DIST)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(DIST)/%.o: $(LIBDIR)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
+$(DIST)/%.o: %.cpp | $(DIST)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -rf $(DIST) $(TARGET_AI) $(TARGET_MOTOR) $(TARGET_MAIN)
