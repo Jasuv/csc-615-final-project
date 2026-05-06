@@ -57,6 +57,8 @@ int obstacle_state = 0;
 float distance_cm = -1.0f; /* measured distance by ultrasonic; -1 = unknown */
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
+int ir_sensor_state[2] = {0,0}; /* 0 = no obstacle, 1 = obstacle detected */
+
 // camera thread
 volatile char camera_bias[16] = "CENTER";
 
