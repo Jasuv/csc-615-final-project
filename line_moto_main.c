@@ -486,8 +486,6 @@ while (!should_exit)
 
     printf("L:%d M:%d R:%d\n", L, M, R);
     printf("Left IR state: %d  Right IR state: %d\n", ir_left, ir_right);
-
-}                                                                                         // delete this 
     
 
     /* ===== STRAIGHT ===== */
