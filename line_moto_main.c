@@ -342,9 +342,9 @@ int get_motor_speed_from_vision(const char* status) {
 }
 
 int main(void) {
-    // pthread_t reader_thread;
-    // pthread_t line_thread;
-    // pthread_t ultrasonic_thread_id;
+    pthread_t reader_thread;
+    pthread_t line_thread;
+    pthread_t ultrasonic_thread_id;
     int target_speed = 50, current_speed_a = 0, current_speed_b = 0;
 
     printf("========================================\n");
@@ -363,7 +363,7 @@ int main(void) {
 
 
     /* Launch compiled camera application as background process */
-    // printf("[Main] Launching camera application...\n");
+    printf("[Main] Launching camera application...\n");
      /* Start camera reader thread FIRST */
     pthread_t cam_thread;
     if (pthread_create(&threads[0], NULL, camera_thread, NULL) != 0) {
@@ -372,7 +372,7 @@ int main(void) {
     }
 
     /* THEN launch ai_camera */
-    //camera_pid = launch_camera_process();
+    camera_pid = launch_camera_process();
     if (camera_pid < 0) {
         printf("[Main] ERROR: Failed to launch camera application\n");
         return 1;
@@ -408,13 +408,13 @@ int main(void) {
     }
 
     /* Start vision reader thread */
-    // printf("[Main] Starting vision reader thread...\n");
-    // if (pthread_create(&reader_thread, NULL, vision_reader_thread, NULL) != 0) {
-    //     printf("[Main] ERROR: Failed to create vision reader thread\n");
-    //     gpioTerminate();
-    //     if (camera_pid > 0) kill(camera_pid, SIGTERM);
-    //     return 1;
-    // }
+    printf("[Main] Starting vision reader thread...\n");
+    if (pthread_create(&reader_thread, NULL, vision_reader_thread, NULL) != 0) {
+       printf("[Main] ERROR: Failed to create vision reader thread\n");
+	   gpioTerminate();
+       if (camera_pid > 0) kill(camera_pid, SIGTERM);
+       return 1;
+    }
 
     /* Start line sensor thread (3-sensor) */
     printf("[Main] Starting line sensor thread...\n");
@@ -435,17 +435,17 @@ int main(void) {
     }
 
     /* Give camera application time to initialize and create the FIFO */
-    //  printf("[Main] Waiting for camera application to initialize...\n");
-    //  while(!should_exit && strcmp((char*)current_status, "INIT") == 0)
-    //  {
-    //      usleep(100000);
-    //  }
-    //  printf("[Main] Camera Ready\n");
+    printf("[Main] Waiting for camera application to initialize...\n");
+    while(!should_exit && strcmp((char*)current_status, "INIT") == 0)
+    {
+        usleep(100000);
+    }
+    printf("[Main] Camera Ready\n");
 
 //thread for camera
 
     printf("\n[Main] Motor control starting...\n");
-    // printf("[Main] Motor speed controlled by AI vision feedback\n");
+    printf("[Main] Motor speed controlled by AI vision feedback\n");
     printf("[Main] Press Ctrl+C to exit\n\n");
 
 /* Start ir sensor thread */
@@ -473,213 +473,213 @@ while (!should_exit)
     // int L, M, R;
     int ir_left, ir_right;
 
-    // pthread_mutex_lock(&lock);
-    // R = line_sensor_state[0];
-    // M = line_sensor_state[1];
-    // L = line_sensor_state[2];
-    // pthread_mutex_unlock(&lock);
+    pthread_mutex_lock(&lock);
+    R = line_sensor_state[0];
+    M = line_sensor_state[1];
+    L = line_sensor_state[2];
+    pthread_mutex_unlock(&lock);
 
     pthread_mutex_lock(&lock);
     ir_left = ir_sensor_state[0];
     ir_right = ir_sensor_state[1];
     pthread_mutex_unlock(&lock);
 
-    // printf("L:%d M:%d R:%d\n", L, M, R);
+    printf("L:%d M:%d R:%d\n", L, M, R);
     printf("Left IR state: %d  Right IR state: %d\n", ir_left, ir_right);
 
 }                                                                                         // delete this 
     
 
     /* ===== STRAIGHT ===== */
-//     if (L == 0 && M == 1 && R == 0)
-//     {
-//         last_direction = 0;
+    if (L == 0 && M == 1 && R == 0)
+    {
+        last_direction = 0;
 
-//         motor_run(MOTOR_FL, BASE_SPEED , FORWARD);
-//         motor_run(MOTOR_FR, BASE_SPEED , FORWARD);
-//         motor_run(MOTOR_RL, BASE_SPEED , FORWARD);
-//         motor_run(MOTOR_RR, BASE_SPEED , FORWARD);
-//         printf("Straight");
-//     }
+        motor_run(MOTOR_FL, BASE_SPEED , FORWARD);
+        motor_run(MOTOR_FR, BASE_SPEED , FORWARD);
+        motor_run(MOTOR_RL, BASE_SPEED , FORWARD);
+        motor_run(MOTOR_RR, BASE_SPEED , FORWARD);
+        printf("Straight");
+    }
 
-//     /* ===== hard 90 right ===== */
-//     else if (L == 1 && M == 1 && R == 0)
-//     {
-//         last_direction = -1;
+     /* ===== hard 90 right ===== */
+    else if (L == 1 && M == 1 && R == 0)
+    {
+        last_direction = -1;
 
-//         motor_run(MOTOR_FR,HARD_SPEED , BACKWARD);
-//         motor_run(MOTOR_FL, BASE_SPEED, FORWARD);
-//         motor_run(MOTOR_RR,HARD_SPEED, BACKWARD);
-//         motor_run(MOTOR_RL, BASE_SPEED, FORWARD);
-//         printf("hard right");
+        motor_run(MOTOR_FR,HARD_SPEED , BACKWARD);
+        motor_run(MOTOR_FL, BASE_SPEED, FORWARD);
+        motor_run(MOTOR_RR,HARD_SPEED, BACKWARD);
+        motor_run(MOTOR_RL, BASE_SPEED, FORWARD);
+        printf("hard right");
        
-//     }
+    }
 
-//     /* ===== hard 90  left ===== */
-//     else if (L == 0 && M == 1 && R == 1)
-//     {
-//         last_direction = 1;
+    /* ===== hard 90  left ===== */
+    else if (L == 0 && M == 1 && R == 1)
+    {
+        last_direction = 1;
 
-//         motor_run(MOTOR_FR, BASE_SPEED, FORWARD);
-//         motor_run(MOTOR_FL, HARD_SPEED, BACKWARD);
-//         motor_run(MOTOR_RR, BASE_SPEED, FORWARD);
-//         motor_run(MOTOR_RL, HARD_SPEED, BACKWARD);
-//         printf("hard left");
-//     }
+        motor_run(MOTOR_FR, BASE_SPEED, FORWARD);
+        motor_run(MOTOR_FL, HARD_SPEED, BACKWARD);
+        motor_run(MOTOR_RR, BASE_SPEED, FORWARD);
+        motor_run(MOTOR_RL, HARD_SPEED, BACKWARD);
+        printf("hard left");
+    }
 
-//     /* ===== soft right  ===== */
-//     else if (L == 1 && M == 0 && R == 0)
-//     {
-//          last_direction = -1;
+    /* ===== soft right  ===== */
+    else if (L == 1 && M == 0 && R == 0)
+    {
+         last_direction = -1;
 
-//        motor_run(MOTOR_FL, BASE_SPEED, FORWARD);
-//        motor_run(MOTOR_FR,SOFT_SPEED, BACKWARD);
-//        motor_run(MOTOR_RL,BASE_SPEED, FORWARD);
-//        motor_run(MOTOR_RR, SOFT_SPEED, BACKWARD);
-//        printf("soft right");
-//     }
+       motor_run(MOTOR_FL, BASE_SPEED, FORWARD);
+       motor_run(MOTOR_FR,SOFT_SPEED, BACKWARD);
+       motor_run(MOTOR_RL,BASE_SPEED, FORWARD);
+       motor_run(MOTOR_RR, SOFT_SPEED, BACKWARD);
+       printf("soft right");
+    }
 
-//     /* ===== soft left   ===== */
-//     else if (L == 0 && M == 0 && R == 1)
-//     {
-//         last_direction = 1;
+    /* ===== soft left   ===== */
+    else if (L == 0 && M == 0 && R == 1)
+    {
+        last_direction = 1;
 
-//        motor_run(MOTOR_FR, BASE_SPEED, FORWARD);
-//        motor_run(MOTOR_FL,SOFT_SPEED, BACKWARD);
-//        motor_run(MOTOR_RR,BASE_SPEED, FORWARD);
-//        motor_run(MOTOR_RL, SOFT_SPEED, BACKWARD);
-//        printf("soft left");
+       motor_run(MOTOR_FR, BASE_SPEED, FORWARD);
+       motor_run(MOTOR_FL,SOFT_SPEED, BACKWARD);
+       motor_run(MOTOR_RR,BASE_SPEED, FORWARD);
+       motor_run(MOTOR_RL, SOFT_SPEED, BACKWARD);
+       printf("soft left");
        
        
-//     }
+    }
 
-//     /* ===== LINE LOST ===== */
-//     else
-//     {
-//         printf("SEARCHING...\n");
+    /* ===== LINE LOST ===== */
+    else
+    {
+        printf("SEARCHING...\n");
 
-//         if (last_direction <= 0)
-//         {
-//             motor_run(MOTOR_FL, SEARCH_SPEED, FORWARD);
-//             motor_run(MOTOR_FR, SEARCH_SPEED, BACKWARD);
-//             motor_run(MOTOR_RL, SEARCH_SPEED, FORWARD);
-//             motor_run(MOTOR_RR, SEARCH_SPEED, BACKWARD);
-//         }
-//         else
-//         {
-//             motor_run(MOTOR_FL, SEARCH_SPEED, BACKWARD);
-//             motor_run(MOTOR_FR,SEARCH_SPEED, FORWARD);
-//             motor_run(MOTOR_RL, SEARCH_SPEED, BACKWARD);
-//             motor_run(MOTOR_RR, SEARCH_SPEED, FORWARD);
-//         }
-//     }
+        if (last_direction <= 0)
+        {
+            motor_run(MOTOR_FL, SEARCH_SPEED, FORWARD);
+            motor_run(MOTOR_FR, SEARCH_SPEED, BACKWARD);
+            motor_run(MOTOR_RL, SEARCH_SPEED, FORWARD);
+            motor_run(MOTOR_RR, SEARCH_SPEED, BACKWARD);
+        }
+        else
+        {
+            motor_run(MOTOR_FL, SEARCH_SPEED, BACKWARD);
+            motor_run(MOTOR_FR,SEARCH_SPEED, FORWARD);
+            motor_run(MOTOR_RL, SEARCH_SPEED, BACKWARD);
+            motor_run(MOTOR_RR, SEARCH_SPEED, FORWARD);
+        }
+    }
 
-//     gpioDelay(140000);   // 
-// }
+    gpioDelay(140000);
+}
 
- //wioth camera
-// while (!should_exit)
-// {
-//     char local_bias[16];
+ wioth camera
+while (!should_exit)
+{
+    char local_bias[16];
 
-//     pthread_mutex_lock(&lock);
-//     strcpy(local_bias, (char*)camera_bias);
-//     pthread_mutex_unlock(&lock);
+    pthread_mutex_lock(&lock);
+    strcpy(local_bias, (char*)camera_bias);
+    pthread_mutex_unlock(&lock);
 
-//     printf("Camera: %s\n", local_bias);
+    printf("Camera: %s\n", local_bias);
 
-//     /* ===== CAMERA IS 100% MASTER ===== */
+    /* ===== CAMERA IS 100% MASTER ===== */
 
-//     if (strcmp(local_bias, "CENTER") == 0)
-//     {
-//         motor_run(MOTOR_FL, 100, FORWARD);
-//         motor_run(MOTOR_FR, 100, FORWARD);
-//         motor_run(MOTOR_RL, 100, FORWARD);
-//         motor_run(MOTOR_RR, 100, FORWARD);
-//     }
+    if (strcmp(local_bias, "CENTER") == 0)
+    {
+        motor_run(MOTOR_FL, 100, FORWARD);
+        motor_run(MOTOR_FR, 100, FORWARD);
+        motor_run(MOTOR_RL, 100, FORWARD);
+        motor_run(MOTOR_RR, 100, FORWARD);
+    }
 
-//     else if (strcmp(local_bias, "LEFT") == 0)
-//     {
-//         motor_run(MOTOR_FL, 60, FORWARD);
-//         motor_run(MOTOR_FR, 100, FORWARD);
-//         motor_run(MOTOR_RL, 60, FORWARD);
-//         motor_run(MOTOR_RR, 100, FORWARD);
-//     }
+    else if (strcmp(local_bias, "LEFT") == 0)
+    {
+        motor_run(MOTOR_FL, 60, FORWARD);
+        motor_run(MOTOR_FR, 100, FORWARD);
+        motor_run(MOTOR_RL, 60, FORWARD);
+        motor_run(MOTOR_RR, 100, FORWARD);
+    }
 
-//     else if (strcmp(local_bias, "RIGHT") == 0)
-//     {
-//         motor_run(MOTOR_FL, 100, FORWARD);
-//         motor_run(MOTOR_FR, 60, FORWARD);
-//         motor_run(MOTOR_RL, 100, FORWARD);
-//         motor_run(MOTOR_RR, 60, FORWARD);
-//     }
+    else if (strcmp(local_bias, "RIGHT") == 0)
+    {
+        motor_run(MOTOR_FL, 100, FORWARD);
+        motor_run(MOTOR_FR, 60, FORWARD);
+        motor_run(MOTOR_RL, 100, FORWARD);
+        motor_run(MOTOR_RR, 60, FORWARD);
+    }
 
-//     else if (strcmp(local_bias, "HARD LEFT") == 0)
-//     {
-//         motor_run(MOTOR_FL, 20, FORWARD);
-//         motor_run(MOTOR_FR, 120, FORWARD);
-//         motor_run(MOTOR_RL, 20, FORWARD);
-//         motor_run(MOTOR_RR, 120, FORWARD);
-//     }
+    else if (strcmp(local_bias, "HARD LEFT") == 0)
+    {
+        motor_run(MOTOR_FL, 20, FORWARD);
+        motor_run(MOTOR_FR, 120, FORWARD);
+        motor_run(MOTOR_RL, 20, FORWARD);
+        motor_run(MOTOR_RR, 120, FORWARD);
+    }
 
-//     else if (strcmp(local_bias, "HARD RIGHT") == 0)
-//     {
-//         motor_run(MOTOR_FL, 120, FORWARD);
-//         motor_run(MOTOR_FR, 20, FORWARD);
-//         motor_run(MOTOR_RL, 120, FORWARD);
-//         motor_run(MOTOR_RR, 20, FORWARD);
-//     }
+    else if (strcmp(local_bias, "HARD RIGHT") == 0)
+    {
+        motor_run(MOTOR_FL, 120, FORWARD);
+        motor_run(MOTOR_FR, 20, FORWARD);
+        motor_run(MOTOR_RL, 120, FORWARD);
+        motor_run(MOTOR_RR, 20, FORWARD);
+    }
 
-//     else
-//     {
-//         printf("NO PATH → STOP\n");
-//         motor_stop_all();
-//     }
+    else
+    {
+        printf("NO PATH → STOP\n");
+        motor_stop_all();
+    }
 
-//     gpioDelay(10000);  // 100ms loop
-// }
+    gpioDelay(10000);  // 100ms loop
+}
 /* =============================================================== */
 
         /* Ultrasonic safety override: if object closer than SAFE_STOP_CM, stop */
-        // const float SAFE_STOP_CM = 20.0f;
-        // if (measured_distance > 0 && measured_distance < SAFE_STOP_CM) {
-        //     target_left = target_right = 0;
-        //     printf("[US] Object %.1fcm → Emergency stop\n", measured_distance);
-        // }
+        const float SAFE_STOP_CM = 20.0f;
+        if (measured_distance > 0 && measured_distance < SAFE_STOP_CM) {
+            target_left = target_right = 0;
+            printf("[US] Object %.1fcm → Emergency stop\n", measured_distance);
+        }
       
         // /* Smooth speed transitions for Motor A (left) */
-        // if (current_speed_a != target_left) {
-        //     if (target_left > current_speed_a) {
-        //         current_speed_a++;
-        //     } else {
-        //         if (current_speed_a - 5 < 0) {
-        //             current_speed_a = 0;
-        //         } else {
-        //             current_speed_a -= 5;
-        //         }
-        //     }
+        if (current_speed_a != target_left) {
+            if (target_left > current_speed_a) {
+                current_speed_a++;
+            } else {
+                if (current_speed_a - 5 < 0) {
+                    current_speed_a = 0;
+                } else {
+                    current_speed_a -= 5;
+                }
+            }
 
-        //     motor_run(MOTOR_FR, current_speed_a, FORWARD);
-        //     motor_run(MOTOR_RR, current_speed_a, BACKWARD);
-        //     printf("[Motor A] Speed: %d%% | L, M, R: %d %d %d | [Vision] Status: %s\n", current_speed_a, L, M, R, current_status);
-        // }
+            motor_run(MOTOR_FR, current_speed_a, FORWARD);
+            motor_run(MOTOR_RR, current_speed_a, BACKWARD);
+            printf("[Motor A] Speed: %d%% | L, M, R: %d %d %d | [Vision] Status: %s\n", current_speed_a, L, M, R, current_status);
+        }
 
-        // /* Smooth speed transitions for Motor B (right) */
-        // if (current_speed_b != target_right) {
-        //     if (target_right > current_speed_b) {
-        //         current_speed_b++;
-        //     } else {
-        //         if (current_speed_b - 5 < 0) {
-        //             current_speed_b = 0;
-        //         } else {
-        //             current_speed_b -= 5;
-        //         }
-        //     }
+        /* Smooth speed transitions for Motor B (right) */
+        if (current_speed_b != target_right) {
+            if (target_right > current_speed_b) {
+                current_speed_b++;
+            } else {
+                if (current_speed_b - 5 < 0) {
+                    current_speed_b = 0;
+                } else {
+                    current_speed_b -= 5;
+                }
+            }
 
-        //     motor_run(MOTOR_FL,current_speed_b, FORWARD);
-        //     motor_run(MOTOR_RL,current_speed_b, BACKWARD);
-        //     printf("[Motor B] Speed: %d%% | L, M, R: %d %d %d | [Vision] Status: %s\n", current_speed_a, L, M, R, current_status);
-        // }
+            motor_run(MOTOR_FL,current_speed_b, FORWARD);
+            motor_run(MOTOR_RL,current_speed_b, BACKWARD);
+            printf("[Motor B] Speed: %d%% | L, M, R: %d %d %d | [Vision] Status: %s\n", current_speed_a, L, M, R, current_status);
+        }
 
         /* Small delay between updates */
     
