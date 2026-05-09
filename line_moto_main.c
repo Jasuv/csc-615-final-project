@@ -353,14 +353,6 @@ int main(void) {
     printf("  Running on Raspberry Pi 4\n");
     printf("========================================\n\n");
 
-    /* Initialize ultrasonic sensor GPIO pins*/
-	printf("Setting GPIO pins to output\n");
-	gpioSetMode(ECHO_PIN, PI_INPUT);
-	gpioSetMode(TRIG_PIN, PI_OUTPUT);
-	printf("Finished setting GPIO pins\n");
-
-    /* Line sensors initialized in the line_sensor_thread (3 sensors) */
-
 
     /* Launch compiled camera application as background process */
     printf("[Main] Launching camera application...\n");
@@ -425,6 +417,12 @@ int main(void) {
         return 1;
     }
 
+    /* Initialize ultrasonic sensor GPIO pins*/                     // wait we already have this code in the ultrasonic sensor thread why is this here
+	/*printf("Setting GPIO pins to output\n");
+	gpioSetMode(ECHO_PIN, PI_INPUT);
+	gpioSetMode(TRIG_PIN, PI_OUTPUT);
+	printf("Finished setting GPIO pins\n");*/
+
     /* Start ultrasonic distance thread */
     printf("[Main] Starting ultrasonic sensor thread...\n");
     if (pthread_create(&threads[2], NULL, ultrasonic_sensor_thread, NULL) != 0) {
@@ -433,6 +431,8 @@ int main(void) {
         if (camera_pid > 0) kill(camera_pid, SIGTERM);
         return 1;
     }
+
+    
 
     /* Give camera application time to initialize and create the FIFO */
     printf("[Main] Waiting for camera application to initialize...\n");
@@ -470,7 +470,7 @@ int turn = 5;
 
 while (!should_exit)
 {
-    // int L, M, R;
+    int L, M, R;
     int ir_left, ir_right;
 
     pthread_mutex_lock(&lock);
@@ -575,7 +575,7 @@ while (!should_exit)
     gpioDelay(140000);
 }
 
- wioth camera
+/* wioth camera */
 while (!should_exit)
 {
     char local_bias[16];
@@ -639,14 +639,14 @@ while (!should_exit)
 /* =============================================================== */
 
         /* Ultrasonic safety override: if object closer than SAFE_STOP_CM, stop */
-        const float SAFE_STOP_CM = 20.0f;
+        /*const float SAFE_STOP_CM = 20.0f;
         if (measured_distance > 0 && measured_distance < SAFE_STOP_CM) {
             target_left = target_right = 0;
             printf("[US] Object %.1fcm → Emergency stop\n", measured_distance);
-        }
+        }*/
       
         // /* Smooth speed transitions for Motor A (left) */
-        if (current_speed_a != target_left) {
+        /*if (current_speed_a != target_left) {
             if (target_left > current_speed_a) {
                 current_speed_a++;
             } else {
@@ -660,10 +660,10 @@ while (!should_exit)
             motor_run(MOTOR_FR, current_speed_a, FORWARD);
             motor_run(MOTOR_RR, current_speed_a, BACKWARD);
             printf("[Motor A] Speed: %d%% | L, M, R: %d %d %d | [Vision] Status: %s\n", current_speed_a, L, M, R, current_status);
-        }
+        }*/
 
         /* Smooth speed transitions for Motor B (right) */
-        if (current_speed_b != target_right) {
+        /*if (current_speed_b != target_right) {
             if (target_right > current_speed_b) {
                 current_speed_b++;
             } else {
@@ -677,12 +677,12 @@ while (!should_exit)
             motor_run(MOTOR_FL,current_speed_b, FORWARD);
             motor_run(MOTOR_RL,current_speed_b, BACKWARD);
             printf("[Motor B] Speed: %d%% | L, M, R: %d %d %d | [Vision] Status: %s\n", current_speed_a, L, M, R, current_status);
-        }
+        }*/
 
         /* Small delay between updates */
     
 
-    printf("\n[Main] Vision feedback stopped. Stopping motors...\n");
+    //printf("\n[Main] Vision feedback stopped. Stopping motors...\n");
 
     /* Cleanup */
     should_exit = 1;
