@@ -170,8 +170,21 @@ int main()
     if (access(FIFO_PATH, F_OK) == -1)
         if (mkfifo(FIFO_PATH, 0666) != 0) { perror("mkfifo"); return -1; }
 
-    int fifo_fd = open(FIFO_PATH, O_WRONLY | O_NONBLOCK);
-    if (fifo_fd < 0) { perror("FIFO open"); return -1; }
+    //int fifo_fd = open(FIFO_PATH, O_WRONLY | O_NONBLOCK);                 // apparently these two lines are fucking up our shit
+    //if (fifo_fd < 0) { perror("FIFO open"); return -1; }
+
+    int fifo_fd = -1;
+    while (fifo_fd < 0) {
+        fifo_fd = open(FIFO_PATH, O_WRONLY | O_NONBLOCK);
+        if (fifo_fd < 0) {
+            if (errno == ENXIO) {
+                usleep(100000);  // no reader yet, wait 100ms and retry
+                continue;
+            }
+            perror("FIFO open");  // real error, give up
+            return -1;
+        }
+    }
 
     string command =
         "rpicam-vid -t 0 "
@@ -329,8 +342,8 @@ int main()
 
             write(fifo_fd, status.c_str(), status.length());
             write(fifo_fd, "\n", 1);
-            imshow("AI Camera - Path Trace", frame);
-            waitKey(1);
+            //imshow("AI Camera - Path Trace", frame);
+            //waitKey(1);
             usleep(100000);
             continue;
         }
@@ -432,8 +445,8 @@ int main()
                 Point(10,HEIGHT-15),
                 FONT_HERSHEY_SIMPLEX,0.5,Scalar(200,200,200),1);
 
-        imshow("AI Camera - Path Trace", frame);
-        if (waitKey(1) == 'q') break;
+        //imshow("AI Camera - Path Trace", frame);
+        //if (waitKey(1) == 'q') break;
 
         write(fifo_fd, status.c_str(), status.length());
         write(fifo_fd, "\n", 1);
@@ -444,6 +457,6 @@ int main()
     close(fifo_fd);
     delete[] buf;
     pclose(pipe);
-    destroyAllWindows();
+    //destroyAllWindows();
     return 0;
 }

@@ -43,11 +43,14 @@ OBJS_MOTOR = $(patsubst %.c,$(DIST)/%.o,$(notdir $(SRCS_MOTOR)))
 
 # --- 3. Main Motor (Pure C) ---
 SRCS_MAIN = main.c \
+            camera_control.c \
+            line_control.c \
             MotorDriver.c \
             $(LIBDIR)/DEV_Config.c \
             $(LIBDIR)/PCA9685.c \
             $(LIBDIR)/dev_hardware_i2c.c \
-            $(LIBDIR)/sysfs_gpio.c
+            $(LIBDIR)/sysfs_gpio.c \
+            $(LIBDIR)/ColorLib.c
 
 OBJS_MAIN = $(patsubst %.c,$(DIST)/%.o,$(notdir $(SRCS_MAIN)))
 

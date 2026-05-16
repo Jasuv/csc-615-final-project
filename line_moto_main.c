@@ -363,18 +363,18 @@ int main(void) {
         return 1;
     }
 
-    /* THEN launch ai_camera */
-    camera_pid = launch_camera_process();
-    if (camera_pid < 0) {
-        printf("[Main] ERROR: Failed to launch camera application\n");
-        return 1;
-    }
-
     /* Initialize hardware */
     printf("[Main] Initializing pigpio...\n");
     if (gpioInitialise() < 0) {
         printf("[Main] ERROR: pigpio initialization failed\n");
         if (camera_pid > 0) kill(camera_pid, SIGTERM);
+        return 1;
+    }
+
+    /* THEN launch ai_camera */
+    camera_pid = launch_camera_process();
+    if (camera_pid < 0) {
+        printf("[Main] ERROR: Failed to launch camera application\n");
         return 1;
     }
 
@@ -399,14 +399,14 @@ int main(void) {
         return 1;
     }
 
-    /* Start vision reader thread */
-    printf("[Main] Starting vision reader thread...\n");
+    /* Start vision reader thread */                                           // Commenting this out because it's basically a copy of camera_thread 
+    /*printf("[Main] Starting vision reader thread...\n");
     if (pthread_create(&reader_thread, NULL, vision_reader_thread, NULL) != 0) {
        printf("[Main] ERROR: Failed to create vision reader thread\n");
 	   gpioTerminate();
        if (camera_pid > 0) kill(camera_pid, SIGTERM);
        return 1;
-    }
+    }*/
 
     /* Start line sensor thread (3-sensor) */
     printf("[Main] Starting line sensor thread...\n");
@@ -458,10 +458,10 @@ if (pthread_create(&threads[3], NULL, ir_sensor_thread, NULL) != 0) {
 }
     /* ================= LINE FOLLOWING LOOP ================= */
 
-int BASE_SPEED   = 90;   // straight speed
-int SOFT_SPEED   =40;   // gentle correction
-int HARD_SPEED   = 50;    // sharp arc (one side stopped)
-int SEARCH_SPEED = 70;   // recovery arc
+int base_speed = 90;   // straight speed
+int soft_speed =40;   // gentle correction
+int hard_speed = 50;    // sharp arc (one side stopped)
+int search_speed = 70;   // recovery arc
 
 int last_direction = 0;  // -1 = left, 1 = right
 int turn = 5;
@@ -493,10 +493,10 @@ while (!should_exit)
     {
         last_direction = 0;
 
-        motor_run(MOTOR_FL, BASE_SPEED , FORWARD);
-        motor_run(MOTOR_FR, BASE_SPEED , FORWARD);
-        motor_run(MOTOR_RL, BASE_SPEED , FORWARD);
-        motor_run(MOTOR_RR, BASE_SPEED , FORWARD);
+        motor_run(MOTOR_FL, base_speed , FORWARD);
+        motor_run(MOTOR_FR, base_speed , FORWARD);
+        motor_run(MOTOR_RL, base_speed , FORWARD);
+        motor_run(MOTOR_RR, base_speed , FORWARD);
         printf("Straight");
     }
 
@@ -505,10 +505,10 @@ while (!should_exit)
     {
         last_direction = -1;
 
-        motor_run(MOTOR_FR,HARD_SPEED , BACKWARD);
-        motor_run(MOTOR_FL, BASE_SPEED, FORWARD);
-        motor_run(MOTOR_RR,HARD_SPEED, BACKWARD);
-        motor_run(MOTOR_RL, BASE_SPEED, FORWARD);
+        motor_run(MOTOR_FR,hard_speed , BACKWARD);
+        motor_run(MOTOR_FL, base_speed, FORWARD);
+        motor_run(MOTOR_RR,hard_speed, BACKWARD);
+        motor_run(MOTOR_RL, base_speed, FORWARD);
         printf("hard right");
        
     }
@@ -518,10 +518,10 @@ while (!should_exit)
     {
         last_direction = 1;
 
-        motor_run(MOTOR_FR, BASE_SPEED, FORWARD);
-        motor_run(MOTOR_FL, HARD_SPEED, BACKWARD);
-        motor_run(MOTOR_RR, BASE_SPEED, FORWARD);
-        motor_run(MOTOR_RL, HARD_SPEED, BACKWARD);
+        motor_run(MOTOR_FR, base_speed, FORWARD);
+        motor_run(MOTOR_FL, hard_speed, BACKWARD);
+        motor_run(MOTOR_RR, base_speed, FORWARD);
+        motor_run(MOTOR_RL, hard_speed, BACKWARD);
         printf("hard left");
     }
 
@@ -530,10 +530,10 @@ while (!should_exit)
     {
          last_direction = -1;
 
-       motor_run(MOTOR_FL, BASE_SPEED, FORWARD);
-       motor_run(MOTOR_FR,SOFT_SPEED, BACKWARD);
-       motor_run(MOTOR_RL,BASE_SPEED, FORWARD);
-       motor_run(MOTOR_RR, SOFT_SPEED, BACKWARD);
+       motor_run(MOTOR_FL, base_speed, FORWARD);
+       motor_run(MOTOR_FR,soft_speed, BACKWARD);
+       motor_run(MOTOR_RL,base_speed, FORWARD);
+       motor_run(MOTOR_RR, soft_speed, BACKWARD);
        printf("soft right");
     }
 
@@ -542,10 +542,10 @@ while (!should_exit)
     {
         last_direction = 1;
 
-       motor_run(MOTOR_FR, BASE_SPEED, FORWARD);
-       motor_run(MOTOR_FL,SOFT_SPEED, BACKWARD);
-       motor_run(MOTOR_RR,BASE_SPEED, FORWARD);
-       motor_run(MOTOR_RL, SOFT_SPEED, BACKWARD);
+       motor_run(MOTOR_FR, base_speed, FORWARD);
+       motor_run(MOTOR_FL,soft_speed, BACKWARD);
+       motor_run(MOTOR_RR,base_speed, FORWARD);
+       motor_run(MOTOR_RL, soft_speed, BACKWARD);
        printf("soft left");
        
        
@@ -558,17 +558,17 @@ while (!should_exit)
 
         if (last_direction <= 0)
         {
-            motor_run(MOTOR_FL, SEARCH_SPEED, FORWARD);
-            motor_run(MOTOR_FR, SEARCH_SPEED, BACKWARD);
-            motor_run(MOTOR_RL, SEARCH_SPEED, FORWARD);
-            motor_run(MOTOR_RR, SEARCH_SPEED, BACKWARD);
+            motor_run(MOTOR_FL, search_speed, FORWARD);
+            motor_run(MOTOR_FR, search_speed, BACKWARD);
+            motor_run(MOTOR_RL, search_speed, FORWARD);
+            motor_run(MOTOR_RR, search_speed, BACKWARD);
         }
         else
         {
-            motor_run(MOTOR_FL, SEARCH_SPEED, BACKWARD);
-            motor_run(MOTOR_FR,SEARCH_SPEED, FORWARD);
-            motor_run(MOTOR_RL, SEARCH_SPEED, BACKWARD);
-            motor_run(MOTOR_RR, SEARCH_SPEED, FORWARD);
+            motor_run(MOTOR_FL, search_speed, BACKWARD);
+            motor_run(MOTOR_FR,search_speed, FORWARD);
+            motor_run(MOTOR_RL, search_speed, BACKWARD);
+            motor_run(MOTOR_RR, search_speed, FORWARD);
         }
     }
 
