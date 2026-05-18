@@ -3,9 +3,9 @@
 // toggle sensors
 // #define AI_CAMERA
 #define LINE_SENSORS
-#define ULTRASONIC_SENSOR
+//#define ULTRASONIC_SENSOR
 #define IR_SENSORS
-//#define RGB_SENSOR
+#define RGB_SENSOR
 
 #define CAMERA_APP "./ai_camera"
 #define FIFO_PATH "/tmp/ai_camera_status"
@@ -19,9 +19,9 @@
 */
 
 #define FULL_SPEED   100
-#define TURN_SPEED   100
-#define HARD_SPEED   50
-#define SOFT_SPEED   30
+#define TURN_SPEED   90
+#define HARD_SPEED   90
+#define SOFT_SPEED   37
 #define SEARCH_SPEED 70
 
 #define OBSTACLE_AVOID_DIST 200

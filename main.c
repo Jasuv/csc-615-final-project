@@ -62,6 +62,10 @@ static uint32_t obstacle_phase_start_tick = 0;
 static int obstacle_ir_seen = 0;
 static int obstacle_ir_clear_streak = 0;
 static int obstacle_line_streak = 0;
+static int blue_event_triggered = 0;
+static uint32_t blue_timer_start = 0;
+static int blue_waiting = 0;
+static int red_stop_triggered = 0;
 
 
 static void print_sensor_dashboard(int L, int M, int R,
@@ -131,14 +135,7 @@ static void print_sensor_dashboard(int L, int M, int R,
     printf("[IR]     DISABLED\n");
 #endif
 
-#ifdef RGB_SENSOR
-    ColorResult rgb_result = ColorLib_GetMatch();
-    printf("[RGB]    Hex:#%06X | Color:%-10s\n",
-           rgb_result.hexValue,
-           rgb_result.name);
-#else
-    printf("[RGB]    DISABLED\n");
-#endif
+
 
     printf("[Time]   %s\n", ts);
     printf("========================================\n");
@@ -672,7 +669,7 @@ int main(void) {
                             obstacle_avoidance_active(),
                             obstacle_phase,
                             local_bias);
-
+     
         if (!obstacle_avoidance_active() && obstacle_distance_triggered()) {
             obstacle_avoidance_start(gpioTick());
         }
