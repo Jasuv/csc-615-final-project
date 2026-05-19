@@ -75,7 +75,7 @@ void apply_line_pattern(int L, int M, int R, int *last_direction, const char *lo
         }
     }
 
-    if (strcmp(rgb.name, "Blue") != 0) blue_lock = 0;
+    if (strcmp(rgb.name, "Blue") != 0) { blue_lock = 0; debounce_on_color = 0; }
 #endif
 
     if (L == 0 && M == 1 && R == 0) {

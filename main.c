@@ -263,6 +263,21 @@ static int fail_startup(const char *message, int terminate_gpio) {
     return 1;
 }
 
+static void wait_for_start_button(void) {
+    gpioSetMode(BUTTON_PIN, PI_INPUT);
+    gpioSetPullUpDown(BUTTON_PIN, PI_PUD_UP);
+
+    printf("[Main] Waiting for start button\n");
+    printf("[Main] Press the button to begin\n");
+    fflush(stdout);
+
+    while (!should_exit && gpioRead(BUTTON_PIN) == 1) {
+        gpioDelay(10000);
+    }
+
+    if (should_exit) return;
+}
+
 
 void signal_handler(int sig) {
     printf("\n[Main] Received signal %d, initiating shutdown\n", sig);
@@ -406,6 +421,16 @@ int main(void) {
         return fail_startup("[Main] ERROR: Failed to create IR sensor thread", 1);
 #endif
 
+    wait_for_start_button();
+    if (should_exit) {
+        motor_stop_all();
+        for (int i = 0; i < thread_count; i++) {
+            pthread_join(threads[i], NULL);
+        }
+        gpioTerminate();
+        return 0;
+    }
+
     int last_direction = 0;
     int last_seen_L = 1, last_seen_M = 1, last_seen_R = 1;
     int recovery_mode = 0;
@@ -441,8 +466,6 @@ int main(void) {
         pthread_mutex_unlock(&lock);
     #endif
 
-        apply_line_pattern(L, M, R, &last_direction, NULL);
-
         printf("\033[2J\033[H");
         print_sensor_dashboard(L, M, R,
                             left_ir, right_ir,
@@ -462,6 +485,8 @@ int main(void) {
                 continue;
             }
         }
+
+        apply_line_pattern(L, M, R, &last_direction, NULL);
 
         gpioDelay(1000);
         
