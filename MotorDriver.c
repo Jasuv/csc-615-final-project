@@ -1,9 +1,9 @@
 /**************************************************************
 * Class:: CSC-615-01 Spring 2026
-* Name:: Eric Ahsue
+* Name:: Haibin Cao, Eric Ahsue, Kiran Khatri, John Tsiglieris
 * Student ID:: 922711514
-* Github-Name:: Jasuv
-* Project:: Assignment 3 - Start Your Motor
+* Github-Name:: haibinc, Jasuv, khatri5034, John-Tsiglieris
+* Project::
 *
 * File:: MotorDriver.c
 *
@@ -15,26 +15,22 @@
 *		speed
 *	3.	stop() stop input motor by setting all related pins
 *		pins to null
-*
+* 
 **************************************************************/
 
 #include "MotorDriver.h"
 
-/* Initialize both motor hats */
 void motor_init(void)
 {
-    /* Initialize Hat 1 */
     DEV_I2C_Init(HAT1_ADDR);
     PCA9685_Init(HAT1_ADDR);
     PCA9685_SetPWMFreq(PWM_FREQ);
 
-    /* Initialize Hat 2 */
     DEV_I2C_Init(HAT2_ADDR);
     PCA9685_Init(HAT2_ADDR);
     PCA9685_SetPWMFreq(PWM_FREQ);
 }
 
-/* Run specific motor */
 int motor_run(Motor mot, UWORD speed, Direction dir)
 {
     if (speed > 100) speed = 100;
@@ -98,7 +94,7 @@ int motor_run(Motor mot, UWORD speed, Direction dir)
 
     return 0;
 }
-/* Stop specific motor */
+
 int motor_stop(Motor mot)
 {
     if (mot == MOTOR_FL || mot == MOTOR_FR)
@@ -131,12 +127,8 @@ void motor_ramp(UBYTE motor,
  
     while (1) {
         motor_run(motor, dir, speed);
-        // Sleep for stepDelay millisecond, which allows us to slow down or speed up gradually
         usleep(stepDelay);  
         if (speed == endSpeed) break;
-
-        // If end speed is faster than start speed, we are speeding up incrementally
-        // Otherwise, we are slowing down incrementally
         if (endSpeed > startSpeed) 
         {
             speed += 1;
@@ -148,7 +140,6 @@ void motor_ramp(UBYTE motor,
     }
 }
 
-/* Stop all motors */
 int motor_stop_all(void)
 {
     motor_stop(MOTOR_FL);

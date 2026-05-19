@@ -1,1 +1,0 @@
-sudo DISPLAY=:0 XAUTHORITY=/home/pi70/.Xauthority ./latest_ai_motor

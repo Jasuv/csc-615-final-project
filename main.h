@@ -1,37 +1,36 @@
-#include <sys/types.h>
+/**************************************************************
+* Class:: CSC-615-01 Spring 2026
+* Name:: Haibin Cao, Eric Ahsue, Kiran Khatri, John Tsiglieris
+* Student ID:: 922711514
+* Github-Name:: haibinc, Jasuv, khatri5034, John-Tsiglieris
+* Project::
+*
+* File:: main.h
+*
+* Description::
+* 
+**************************************************************/
 
 // toggle sensors
-// #define AI_CAMERA
 #define LINE_SENSORS
-//#define ULTRASONIC_SENSOR
+#define ULTRASONIC_SENSOR
 #define IR_SENSORS
 #define RGB_SENSOR
 
-#define CAMERA_APP "./ai_camera"
-#define FIFO_PATH "/tmp/ai_camera_status"
-
 // set various car speeds
-/*
-#define FULL_SPEED   0
-#define HARD_SPEED   0
-#define SOFT_SPEED   0
-#define SEARCH_SPEED 0
-*/
-
 #define FULL_SPEED   100
-#define TURN_SPEED   90
-#define HARD_SPEED   90
-#define SOFT_SPEED   37
+#define TURN_SPEED   100
+#define HARD_SPEED   70
+#define SOFT_SPEED   50
 #define SEARCH_SPEED 70
 
-#define OBSTACLE_AVOID_DIST 200
-
-#define OBSTACLE_DRIFT_RIGHT_US   200000u
-#define OBSTACLE_FORWARD_TIMEOUT_US 1000000u
-#define OBSTACLE_TURN_LEFT_US     700000u
-#define OBSTACLE_REJOIN_TIMEOUT_US 200000u
-#define IR_DEBOUNCE_COUNT         4
-#define LINE_DEBOUNCE_COUNT       3
+#define OBSTACLE_AVOID_DIST         200      // 20cm
+#define OBSTACLE_DRIFT_RIGHT_US     200000u  // 200ms
+#define OBSTACLE_FORWARD_TIMEOUT_US 1000000u // 1s
+#define OBSTACLE_TURN_LEFT_US       700000u  // 700ms
+#define OBSTACLE_REJOIN_TIMEOUT_US  200000u  // 200ms
+#define IR_DEBOUNCE_COUNT           4        // 4s
+#define LINE_DEBOUNCE_COUNT         3        // 3s
 
 typedef enum {
     OBSTACLE_PHASE_IDLE = 0,
@@ -48,7 +47,7 @@ typedef enum {
 #define RIGHT_LINE_SENSOR_PIN 17
 #define LEFT_IR_PIN 21
 #define RIGHT_IR_PIN 20
-#define BUTTON_PIN 5 // NOT USING RIGHT NOW, DO IT LAST
+#define BUTTON_PIN 5
 
 void signal_handler(int sig);
 pid_t launch_camera_process(void);

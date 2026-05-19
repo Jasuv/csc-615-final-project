@@ -1,15 +1,15 @@
 /**************************************************************
 * Class:: CSC-615-01 Spring 2026
-* Name:: Eric Ahsue
+* Name:: Haibin Cao, Eric Ahsue, Kiran Khatri, John Tsiglieris
 * Student ID:: 922711514
-* Github-Name:: Jasuv
-* Project:: Assignment 3 - Start Your Motor
+* Github-Name:: haibinc, Jasuv, khatri5034, John-Tsiglieris
+* Project::
 *
 * File:: MotorDriver.h
 *
 * Description:: includes the sample DEV lib and PCA9685 functions
 * to create driver code for the motor
-*
+* 
 **************************************************************/
 
 
