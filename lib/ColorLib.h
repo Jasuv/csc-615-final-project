@@ -9,6 +9,9 @@
 *
 * Description:: Implement an RGB detection system by reading sensor data 
 * and using I2C communication between sensor and raspberry PI.
+* 
+* Blue = stop for 5 seconds, then continue
+* Red = stop permanently
 *
 **************************************************************/
 #ifndef COLOR_LIB_H
@@ -62,9 +65,9 @@ typedef struct {
 } ColorTarget;
 
 static const ColorTarget PROJECT_COLORS[] = {
-    {"Red",      0xFF0000,  180,255,  55,95, 40,70},
-    {"Blue",     0x0000FF,  0,20,     90,160,    180,255},
-    {"Black",    0x000000,  90,110,     225,255,    150,175},
+    {"Red",      0xFF0000,  180,255,  55,95,    40,70},
+    {"Blue",     0x0000FF,  0,20,     90,160,   180,255},
+    {"Black",    0x000000,  90,110,   225,255,  150,175},
 };
 
 #define COLOR_COUNT 3

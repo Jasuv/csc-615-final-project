@@ -9,28 +9,36 @@
 *
 * Description::
 * 
+* Full implementation of main loop for self driving car:
+* * modular sensor threads for all sensors to work individually
+* * waits for button press to start program
+* * ultrasonic sensor: detects obstacles and initiates avoidance routine
+* * line sensors: detects line and adjusts motor speeds accordingly
+* * RGB sensor: detects important colors and reacts (red = stop, blue = wait 5 seconds)
+* * IR sensors: used for obstacle avoidance routine to detect when obstacle is passed
+* 
 **************************************************************/
 
-// toggle sensors
+// toggle sensors (for testing purposes)
 #define LINE_SENSORS
 #define ULTRASONIC_SENSOR
 #define IR_SENSORS
 #define RGB_SENSOR
 
-// set various car speeds
+ //set various car speeds
 #define FULL_SPEED   100
 #define TURN_SPEED   100
 #define HARD_SPEED   70
 #define SOFT_SPEED   50
 #define SEARCH_SPEED 70
 
-#define OBSTACLE_AVOID_DIST         200      // 20cm
-#define OBSTACLE_DRIFT_RIGHT_US     200000u  // 200ms
+#define OBSTACLE_AVOID_DIST         250      // 25cm
+#define OBSTACLE_DRIFT_RIGHT_US     500000u  // 500ms
 #define OBSTACLE_FORWARD_TIMEOUT_US 1000000u // 1s
 #define OBSTACLE_TURN_LEFT_US       700000u  // 700ms
-#define OBSTACLE_REJOIN_TIMEOUT_US  200000u  // 200ms
-#define IR_DEBOUNCE_COUNT           4        // 4s
-#define LINE_DEBOUNCE_COUNT         3        // 3s
+#define OBSTACLE_REJOIN_TIMEOUT_US  7000000u // 7s
+#define IR_DEBOUNCE_COUNT           10       // 10s
+#define LINE_DEBOUNCE_COUNT         1        // 1s
 
 typedef enum {
     OBSTACLE_PHASE_IDLE = 0,

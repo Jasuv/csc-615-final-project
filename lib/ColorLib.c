@@ -3,13 +3,16 @@
 * Name:: Haibin Cao, Eric Ahsue, Kiran Khatri, John Tsiglieris
 * Student ID:: 923756077, 922711514, 925750019, 923593954
 * GitHub-Name:: haibinc, Jasuv, khatri5034, John-Tsiglieris
-* Project:: Assignment 5 – RGB Sensor
+* Project:: 
 *
 * File:: ColorLib.c
 *
 * Description:: Implement an RGB detection system by reading sensor data 
 * and using I2C communication between sensor and raspberry PI.
-*
+* 
+* Blue = stop for 5 seconds, then continue
+* Red = stop permanently
+* 
 **************************************************************/
 
 #include "ColorLib.h"
@@ -44,8 +47,7 @@ int ColorLib_Init(void) {
 	return 0;
 }
 
-ColorResult ColorLib_GetMatch(void)
-{
+ColorResult ColorLib_GetMatch(void) {
     ColorResult result;
 
     uint16_t C = sensor_read(TCS_REG_CDATA);
@@ -55,36 +57,26 @@ ColorResult ColorLib_GetMatch(void)
 
     printf("RAW -> C:%u R:%u G:%u B:%u\n", C, R, G, B);
 
-    //BLACK 
-    if (C < 25) {
-        strcpy(result.name, "Black");
-        result.hexValue = 0x000000;
-        result.confidence = 100;
-        return result;
-    }
-
-    //RED
-    if (R > G + 3 && R > B + 3) {
+    // red match
+    if ( R > B && R > G) {
         strcpy(result.name, "Red");
         result.hexValue = 0xFF0000;
         result.confidence = 90;
         return result;
     }
 
-    // BLUE 
-if (C > 40 &&             
-    B > R + 15 &&        
-    B > G + 15 && 
-    B > 60)                
-{
-    strcpy(result.name, "Blue");
-    result.hexValue = 0x0000FF;
-    result.confidence = 95;
-    return result;
-}
+    // blue match
+    if ( C >170 && C < 310 && B > R && B > G) {
+        strcpy(result.name, "Blue");
+        result.hexValue = 0x0000FF;
+        result.confidence = 95;
+        return result;
+    }
+
+    // unknown match
     strcpy(result.name, "Unknown");
     result.hexValue = 0x000000;
     result.confidence = 0;
-
+    
     return result;
 }

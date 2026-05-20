@@ -9,6 +9,14 @@
 *
 * Description::
 * 
+* Full implementation of main loop for self driving car:
+* * modular sensor threads for all sensors to work individually
+* * waits for button press to start program
+* * ultrasonic sensor: detects obstacles and initiates avoidance routine
+* * line sensors: detects line and adjusts motor speeds accordingly
+* * RGB sensor: detects important colors and reacts (red = stop, blue = wait 5 seconds)
+* * IR sensors: used for obstacle avoidance routine to detect when obstacle is passed
+* 
 **************************************************************/
 
 #include <sys/types.h>
@@ -206,9 +214,8 @@ static int obstacle_avoidance_step(int M, int left_ir, int right_ir, uint32_t no
         if (ir_blocked) {
             obstacle_ir_seen = 1;
             obstacle_ir_clear_streak = 0;
-        } else if (obstacle_ir_seen) {
+        } else if (obstacle_ir_seen)
             obstacle_ir_clear_streak++;
-        }
 
         if (obstacle_ir_seen && obstacle_ir_clear_streak >= IR_DEBOUNCE_COUNT) {
             obstacle_phase = OBSTACLE_PHASE_TURN_LEFT;
@@ -231,11 +238,8 @@ static int obstacle_avoidance_step(int M, int left_ir, int right_ir, uint32_t no
     case OBSTACLE_PHASE_REJOIN_LINE:
         drive_obstacle_forward();
 
-        if (M == 0) {
-            obstacle_line_streak++;
-        } else {
-            obstacle_line_streak = 0;
-        }
+        if (M == 0) obstacle_line_streak++;
+        else obstacle_line_streak = 0;
 
         if (obstacle_line_streak >= LINE_DEBOUNCE_COUNT) {
             obstacle_avoidance_reset();
