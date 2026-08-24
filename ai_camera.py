@@ -1,3 +1,24 @@
+##################################################################
+# Class:: CSC-615-01 Spring 2026
+# Name:: Eric Ahsue
+# Student ID:: 922711514
+# Github-Name:: Jasuv
+# Project:: CSC 615 Final Project - Self-Driving Car
+#
+# File:: ai_camera.py
+#
+# Description:: Runs real-time object detection on the Raspberry Pi
+# AI Camera (Sony IMX500) using Picamera2. For every detected object,
+# it checks how close the bottom edge of its bounding box is to the
+# bottom of the frame (i.e. how close the object is to the car) and
+# classifies the scene as CLEAR, CAUTION, or STOP. A short rolling
+# buffer smooths out single-frame noise before a final decision is
+# made. The resulting status is written every frame to a named pipe
+# (FIFO) at /tmp/ai_camera_status so the C motor-control program
+# (main_ai_integrated.c) can automatically slow down or emergency
+# stop the car when an obstacle gets too close.
+##################################################################
+
 import sys
 import cv2
 import os

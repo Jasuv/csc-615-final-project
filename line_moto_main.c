@@ -1,3 +1,20 @@
+/**************************************************************
+* Class:: CSC-615-01 Spring 2026
+* Name:: Eric Ahsue
+* Student ID:: 922711514
+* Github-Name:: Jasuv
+* Project:: CSC 615 Final Project - Self-Driving Car
+*
+* File:: line_moto_main.c
+*
+* Description:: Standalone test harness that drives Motor B based
+* on a single IR line sensor (GPIO 17). Used to validate line
+* detection and motor response independently of the full AI vision
+* and multi-sensor pipeline before wiring it into the main
+* self-driving control loop.
+*
+**************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pigpio.h>
