@@ -1,20 +1,20 @@
 /**************************************************************
 * Class:: CSC-615-01 Spring 2026
-* Name:: Eric Ahsue
-* Student ID:: 922711514
-* Github-Name:: Jasuv
-* Project:: Assignment 3 - Start Your Motor
+* Name:: Haibin Cao, Eric Ahsue, Kiran Khatri, John Tsiglieris
+* Student ID:: 923756077, 922711514, 925750019, 923593954
+* GitHub-Name:: haibinc, Jasuv, khatri5034, John-Tsiglieris
+* Project:: CSC 615 Final Project - Self-Driving Car
 *
 * File:: MotorDriver.c
 *
-* Description:: Implements three driver code funcions for the
-* motor:
-*	1.	init() to initialize PCA9685 chip with I2C address
-*		and PWM frequency
-*	2.	run() starts input motor at input direction with input
-*		speed
-*	3.	stop() stop input motor by setting all related pins
-*		pins to null
+* Description:: Motor driver layer for the self-driving car, built
+* on top of the PCA9685 PWM controller:
+*	1.	motor_init() initializes the PCA9685 chip with its I2C
+*		address and PWM frequency
+*	2.	motor_run() drives the given motor (A or B) forward or
+*		backward at a given speed (1-100%)
+*	3.	motor_stop() / motor_stop_all() stop one or both motors
+*		by zeroing their direction and PWM channels
 *
 **************************************************************/
 

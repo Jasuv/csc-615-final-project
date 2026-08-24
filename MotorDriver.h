@@ -1,14 +1,17 @@
 /**************************************************************
 * Class:: CSC-615-01 Spring 2026
-* Name:: Eric Ahsue
-* Student ID:: 922711514
-* Github-Name:: Jasuv
-* Project:: Assignment 3 - Start Your Motor
+* Name:: Haibin Cao, Eric Ahsue, Kiran Khatri, John Tsiglieris
+* Student ID:: 923756077, 922711514, 925750019, 923593954
+* GitHub-Name:: haibinc, Jasuv, khatri5034, John-Tsiglieris
+* Project:: CSC 615 Final Project - Self-Driving Car
 *
 * File:: MotorDriver.h
 *
-* Description:: includes the sample DEV lib and PCA9685 functions
-* to create driver code for the motor
+* Description:: Declares the motor API used throughout the project:
+* MOTOR_A/MOTOR_B and FORWARD/BACKWARD enums, the PCA9685 I2C
+* address and PWM frequency, and the motor_init/motor_run/
+* motor_stop/motor_stop_all functions built on top of the
+* WaveShare DEV_Config and PCA9685 libraries.
 *
 **************************************************************/
 

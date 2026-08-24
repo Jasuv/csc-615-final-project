@@ -1,21 +1,26 @@
 /**************************************************************
 * Class:: CSC-615-01 Spring 2026
-* Name:: Eric Ahsue
-* Student ID:: 922711514
-* Github-Name:: Jasuv
-* Project:: Assignment 3 - Motor Control with AI Vision
+* Name:: Haibin Cao, Eric Ahsue, Kiran Khatri, John Tsiglieris
+* Student ID:: 923756077, 922711514, 925750019, 923593954
+* GitHub-Name:: haibinc, Jasuv, khatri5034, John-Tsiglieris
+* Project:: CSC 615 Final Project - Self-Driving Car
 *
 * File:: main_ai_integrated.c
 *
-* Description:: Motor control system driven by AI camera feedback
-* via named pipe (FIFO). Motor speed is controlled by vision:
+* Description:: Main entry point for the self-driving car. Launches
+* ai_camera.py as a background process and reads its CLEAR/CAUTION/
+* STOP vision status from a named pipe (FIFO) on a dedicated thread.
+* Drives both Motor A and Motor B with smoothly ramped PWM speed
+* based on that feedback:
 * - CLEAR   = Full speed (100%)
-* - CAUTION = Reduced speed (50%)
-* - STOP    = Motor stops
+* - CAUTION = Reduced speed
+* - STOP    = Motors stop
+* Also sets up GPIO for the ultrasonic and line sensors that are
+* being integrated into the same control loop.
 *
-* Usage: Run ai_camera.py in one terminal, run this in another:
-*   gcc main_ai_integrated.c MotorDriver.c lib/*.c -lpigpio -o motor_ai
-*   ./motor_ai
+* Usage:
+*   make
+*   sudo ./motor_ai
 *
 **************************************************************/
 

@@ -1,8 +1,8 @@
 ##################################################################
 # Class:: CSC-615-01 Spring 2026
-# Name:: Eric Ahsue
-# Student ID:: 922711514
-# Github-Name:: Jasuv
+# Name:: Haibin Cao, Eric Ahsue, Kiran Khatri, John Tsiglieris
+# Student ID:: 923756077, 922711514, 925750019, 923593954
+# GitHub-Name:: haibinc, Jasuv, khatri5034, John-Tsiglieris
 # Project:: CSC 615 Final Project - Self-Driving Car
 #
 # File:: ai_camera.py
